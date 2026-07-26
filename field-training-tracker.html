@@ -56,10 +56,26 @@
   .exercise-card{background:var(--panel); border:1px solid var(--border); margin-bottom:8px;}
   .exercise-card.done{background:var(--olive-dim); border-color:var(--olive);}
   .exercise-row{display:flex; align-items:center; justify-content:space-between; padding:12px 16px;}
-  .ex-main{flex:1; text-align:left; background:none; border:none; padding:0; color:inherit;}
+  .ex-main{flex:1; text-align:left; background:none; border:none; padding:0; color:inherit; display:flex; align-items:center; gap:12px; min-width:0;}
+  .ex-icon{
+    width:40px; height:40px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--border); background:var(--bg); color:var(--olive);
+  }
+  .exercise-card.done .ex-icon{border-color:var(--olive); color:var(--olive); background:var(--olive-dim);}
+  .ex-icon svg{width:24px; height:24px; display:block;}
+  .ex-text{min-width:0;}
   .ex-name{font-size:14px; font-weight:500;}
+  .ex-cue{font-size:10px; color:var(--muted2); margin-top:2px; letter-spacing:.04em; text-transform:uppercase; font-family:'Oswald',sans-serif;}
   .ex-meta{font-size:12px; color:var(--muted); margin-top:2px; font-family:'IBM Plex Mono',monospace;}
   .ex-actions{display:flex; align-items:center; gap:10px; flex-shrink:0;}
+  .week-ex-icon{
+    width:28px; height:28px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--border); color:var(--olive); background:var(--bg);
+  }
+  .week-ex-icon svg{width:18px; height:18px; display:block;}
+  .week-ex-label{display:flex; flex-direction:column; align-items:flex-start; min-width:0; flex:1;}
   .form-btn{font-size:11px; padding:5px 8px; border:1px solid var(--muted3); color:var(--muted2); background:none;}
   .checkbox{width:24px; height:24px; display:flex; align-items:center; justify-content:center; border:1px solid var(--muted3); background:none; flex-shrink:0;}
   .checkbox.done{background:var(--olive); border-color:var(--olive);}
@@ -87,8 +103,9 @@
   .week-exercises{padding:0 16px 12px; border-top:1px solid var(--border);}
   .week-ex-row{padding:10px 0; border-bottom:1px solid #2A2E24;}
   .week-ex-row:last-child{border-bottom:none;}
-  .week-ex-top{width:100%; display:flex; align-items:center; justify-content:space-between; background:none; border:none; color:inherit; text-align:left; padding:0;}
+  .week-ex-top{width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; background:none; border:none; color:inherit; text-align:left; padding:0;}
   .week-ex-name{font-size:12px; color:var(--text2);}
+  .week-ex-cue{font-size:9px; color:var(--muted3); margin-top:1px; letter-spacing:.04em; text-transform:uppercase; font-family:'Oswald',sans-serif;}
   .stats-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:24px;}
   .stat-card{padding:14px; background:var(--panel); border:1px solid var(--border);}
   .stat-val{font-size:20px; font-weight:700; margin-top:8px; font-family:'IBM Plex Mono',monospace;}
@@ -195,6 +212,79 @@ const FORM_GUIDE = {
   "Stretching": { steps: ["Ease into each stretch gradually", "Hold 20-30 seconds per muscle group", "Breathe steadily, don't bounce"], mistakes: ["Bouncing in the stretch", "Stretching to the point of sharp pain"] },
 };
 
+// Simple line icons so each exercise shows what movement to do
+const EXERCISE_VISUAL = {
+  "Push-ups": { cue: "Chest push on floor", icon: "pushup" },
+  "Overhead Press": { cue: "Press weight up", icon: "press" },
+  "Incline Push-ups / DB Press": { cue: "Push on an angle", icon: "incline" },
+  "Tricep Dips": { cue: "Lower on arms", icon: "dip" },
+  "Lateral Raises": { cue: "Raise arms out", icon: "raise" },
+  "Pull-ups / Assisted Pull-ups": { cue: "Pull chin over bar", icon: "pullup" },
+  "Bent-over Rows": { cue: "Pull weight to ribs", icon: "row" },
+  "Inverted Rows": { cue: "Pull chest to bar", icon: "inverted" },
+  "Bicep Curls": { cue: "Curl weight up", icon: "curl" },
+  "Face Pulls / Band Pull-aparts": { cue: "Pull to face", icon: "facepull" },
+  "Bodyweight Squats / Back Squat": { cue: "Sit hips down", icon: "squat" },
+  "Walking Lunges": { cue: "Step and drop", icon: "lunge" },
+  "Romanian Deadlift": { cue: "Hinge at hips", icon: "hinge" },
+  "Step-ups": { cue: "Step onto box", icon: "step" },
+  "Calf Raises": { cue: "Rise on toes", icon: "calf" },
+  "Ruck March (weighted pack)": { cue: "Walk with pack", icon: "ruck" },
+  "Plank": { cue: "Hold straight body", icon: "plank" },
+  "Hanging Knee Raises": { cue: "Knees to chest", icon: "knees" },
+  "Russian Twists": { cue: "Twist side to side", icon: "twist" },
+  "Deadlift / Kettlebell Swings": { cue: "Lift from floor", icon: "deadlift" },
+  "Goblet Squats": { cue: "Squat holding weight", icon: "goblet" },
+  "Push Press": { cue: "Dip then press up", icon: "pushpress" },
+  "Renegade Rows": { cue: "Plank + row", icon: "renegade" },
+  "Brisk Walk / Ruck (light)": { cue: "Easy walk", icon: "walk" },
+  "Mobility Flow": { cue: "Move joints freely", icon: "mobility" },
+  "Stretching": { cue: "Hold long stretches", icon: "stretch" },
+};
+
+const ICON_PATHS = {
+  pushup: `<path d="M4 16h16"/><circle cx="8" cy="10" r="2"/><path d="M10 10h6l2 6"/><path d="M6 14l4-4"/>`,
+  press: `<path d="M12 20V8"/><path d="M8 8h8"/><circle cx="12" cy="5" r="2"/><path d="M7 14h10"/>`,
+  incline: `<path d="M4 18l8-10 8 4"/><circle cx="9" cy="10" r="2"/><path d="M11 11l5 2"/>`,
+  dip: `<path d="M6 6v6c0 2 2 4 6 4s6-2 6-4V6"/><path d="M4 8h4M16 8h4"/><circle cx="12" cy="4" r="1.5"/>`,
+  raise: `<path d="M12 20v-6"/><circle cx="12" cy="6" r="2"/><path d="M12 10L5 14M12 10l7 4"/><path d="M4 16h3M17 16h3"/>`,
+  pullup: `<path d="M4 5h16"/><path d="M8 5v5"/><path d="M16 5v5"/><circle cx="12" cy="14" r="2"/><path d="M12 16v4"/>`,
+  row: `<path d="M5 18l7-8"/><circle cx="14" cy="8" r="2"/><path d="M14 10l5 3"/><path d="M8 12h6"/>`,
+  inverted: `<path d="M4 8h16"/><circle cx="12" cy="16" r="2"/><path d="M8 10v4M16 10v4"/><path d="M12 14V10"/>`,
+  curl: `<path d="M10 20v-8"/><circle cx="10" cy="8" r="2"/><path d="M12 9c3 0 5 2 5 5"/><path d="M15 16h4"/>`,
+  facepull: `<circle cx="12" cy="7" r="2"/><path d="M12 9v4"/><path d="M5 12l7-1 7 1"/><path d="M5 12v4M19 12v4"/>`,
+  squat: `<circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><path d="M8 20l4-9 4 9"/><path d="M7 14h10"/>`,
+  lunge: `<circle cx="10" cy="5" r="2"/><path d="M10 7v5"/><path d="M10 12l-4 8M10 12l6 3 2 5"/>`,
+  hinge: `<circle cx="16" cy="6" r="2"/><path d="M16 8L8 14"/><path d="M8 14v6M14 12l4 2"/><path d="M6 14h5"/>`,
+  step: `<path d="M4 18h6v-4h6V8h4"/><circle cx="8" cy="10" r="2"/><path d="M8 12v6"/>`,
+  calf: `<circle cx="12" cy="5" r="2"/><path d="M12 7v9"/><path d="M9 20h6"/><path d="M12 16l-3 4M12 16l3 4"/>`,
+  ruck: `<circle cx="10" cy="6" r="2"/><path d="M10 8v8l-3 4M10 12h4l2 8"/><path d="M14 9h3v5h-3z"/>`,
+  plank: `<circle cx="5" cy="10" r="2"/><path d="M7 10h12"/><path d="M7 10v6M19 10v6"/><path d="M5 16h16"/>`,
+  knees: `<path d="M4 4h16"/><circle cx="12" cy="8" r="2"/><path d="M12 10v2"/><path d="M8 18l4-6 4 6"/>`,
+  twist: `<circle cx="12" cy="6" r="2"/><path d="M12 8v5"/><path d="M7 14c2 3 8 3 10 0"/><path d="M6 18h4M14 18h4"/>`,
+  deadlift: `<circle cx="12" cy="5" r="2"/><path d="M12 7v7"/><path d="M7 20l5-6 5 6"/><path d="M5 18h14"/>`,
+  goblet: `<circle cx="12" cy="5" r="2"/><path d="M12 7v3"/><path d="M9 10h6v3H9z"/><path d="M8 20l4-7 4 7"/>`,
+  pushpress: `<circle cx="12" cy="4" r="1.8"/><path d="M12 6v5"/><path d="M8 11h8"/><path d="M9 20l3-7 3 7"/><path d="M7 14h10"/>`,
+  renegade: `<circle cx="5" cy="9" r="1.8"/><path d="M7 9h11"/><path d="M7 9v7M18 9v7"/><path d="M14 9l4-4"/>`,
+  walk: `<circle cx="14" cy="5" r="2"/><path d="M14 7l-2 5 3 3M12 12l-4 7M15 15l3 5"/><path d="M8 10h4"/>`,
+  mobility: `<circle cx="12" cy="12" r="7"/><path d="M12 5v3M12 16v3M5 12h3M16 12h3"/><circle cx="12" cy="12" r="2"/>`,
+  stretch: `<circle cx="7" cy="8" r="2"/><path d="M9 8h8"/><path d="M17 8l2 8M9 10l-2 8"/><path d="M11 14h6"/>`,
+  default: `<circle cx="12" cy="7" r="2"/><path d="M12 9v5"/><path d="M8 20l4-6 4 6"/>`,
+};
+
+function exerciseVisual(name){
+  return EXERCISE_VISUAL[name] || { cue: "Follow form tips", icon: "default" };
+}
+
+function exerciseIconSvg(name, sizeClass){
+  const visual = exerciseVisual(name);
+  const paths = ICON_PATHS[visual.icon] || ICON_PATHS.default;
+  const cue = String(visual.cue).replace(/"/g, "&quot;");
+  return `<span class="${sizeClass}" aria-hidden="true" title="${cue}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>
+  </span>`;
+}
+
 const STORAGE_KEY = "field-tracker-state";
 const DROPBOX_KEY_STORAGE = "rebuild-dropbox-app-key";
 const DB_NAME = "rebuild-protocol";
@@ -220,7 +310,7 @@ function setDropboxAppKey(key){
 }
 
 function openDropbox(pathHint){
-  // Opens Dropbox app when installed, otherwise Dropbox on the web — works on phone & PC
+  // Opens Dropbox app / site without leaving this tracker page when possible
   const web = pathHint && /^https?:\/\//i.test(pathHint) ? pathHint : DROPBOX_WEB;
   showToast("Opening Dropbox on this device…");
 
@@ -228,21 +318,26 @@ function openDropbox(pathHint){
     const intent =
       "intent://home/#Intent;scheme=https;package=com.dropbox.android;S.browser_fallback_url=" +
       encodeURIComponent(web) + ";end";
-    window.location.href = intent;
-    setTimeout(() => { try{ window.open(web, "_blank", "noopener"); }catch(_){ } }, 900);
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = intent;
+    document.body.appendChild(iframe);
+    setTimeout(() => {
+      try{ window.open(web, "_blank", "noopener"); }catch(_){}
+      try{ iframe.remove(); }catch(_){}
+    }, 700);
     return;
   }
 
   if(isAppleMobile()){
-    // https://www.dropbox.com often hands off to the Dropbox app when installed
-    const appLink = document.createElement("a");
-    appLink.href = "dbapi-2://1/home";
-    appLink.style.display = "none";
-    document.body.appendChild(appLink);
-    try{ appLink.click(); }catch(_){}
+    // Try app scheme in a hidden iframe, then open Dropbox web/app handoff in a new tab
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = "dbapi-2://1/home";
+    document.body.appendChild(iframe);
     setTimeout(() => {
-      window.location.href = web;
-      try{ appLink.remove(); }catch(_){}
+      try{ window.open(web, "_blank", "noopener"); }catch(_){ window.open(web); }
+      try{ iframe.remove(); }catch(_){}
     }, 400);
     return;
   }
@@ -312,9 +407,11 @@ async function pickImageFromDropboxChooser(){
 }
 
 async function openDropboxThenPick(inputEl, tip){
+  // Keep the tracker open; open Dropbox alongside, then show the system picker
+  // (on phones the picker can reach Dropbox via Browse / Locations)
   openDropbox();
   showToast(tip || "In the file picker: Browse / Locations → Dropbox");
-  setTimeout(() => { if(inputEl) inputEl.click(); }, isMobileDevice() ? 700 : 300);
+  setTimeout(() => { if(inputEl) inputEl.click(); }, isMobileDevice() ? 500 : 250);
 }
 
 function todayKey(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
@@ -1017,14 +1114,19 @@ function render(){
       program.exercises.forEach((ex, idx) => {
         const isDone = !!checked[idx];
         const guide = FORM_GUIDE[ex.name];
+        const visual = exerciseVisual(ex.name);
         const exKey = `today-${idx}`;
         const isOpen = expandedExercise === exKey;
         html += `
         <div class="exercise-card ${isDone?'done':''}">
           <div class="exercise-row">
             <button class="ex-main" data-toggle="${idx}">
-              <div class="ex-name" style="${isDone?'color:var(--olive)':''}">${esc(ex.name)}</div>
-              <div class="ex-meta">${ex.sets} × ${ex.reps}${ex.note?` · ${esc(ex.note)}`:""}</div>
+              ${exerciseIconSvg(ex.name, "ex-icon")}
+              <div class="ex-text">
+                <div class="ex-name" style="${isDone?'color:var(--olive)':''}">${esc(ex.name)}</div>
+                <div class="ex-cue">${esc(visual.cue)}</div>
+                <div class="ex-meta">${ex.sets} × ${ex.reps}${ex.note?` · ${esc(ex.note)}`:""}</div>
+              </div>
             </button>
             <div class="ex-actions">
               ${guide ? `<button class="form-btn" data-formtoggle="${exKey}">${isOpen?"Hide":"Form"}</button>` : ""}
@@ -1081,11 +1183,18 @@ function render(){
             prog.exercises.map((ex,i)=>{
               const exKey = `${dc}-${i}`;
               const guide = FORM_GUIDE[ex.name];
+              const visual = exerciseVisual(ex.name);
               const exOpen = expandedExercise === exKey;
               return `
               <div class="week-ex-row">
                 <button class="week-ex-top" ${guide?`data-formtoggle="${exKey}"`:""}>
-                  <span class="week-ex-name">${esc(ex.name)}</span>
+                  <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+                    ${exerciseIconSvg(ex.name, "week-ex-icon")}
+                    <span class="week-ex-label">
+                      <span class="week-ex-name">${esc(ex.name)}</span>
+                      <span class="week-ex-cue">${esc(visual.cue)}</span>
+                    </span>
+                  </div>
                   <div style="display:flex;align-items:center;gap:8px">
                     <span class="mono" style="font-size:11px;color:var(--muted)">${ex.sets} × ${ex.reps}</span>
                     ${guide?`<span class="chevron ${exOpen?'open':''}" style="font-size:11px">›</span>`:""}
