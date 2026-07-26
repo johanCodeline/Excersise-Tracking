@@ -4,31 +4,35 @@ Pure **HTML + JavaScript** field training tracker. No server, no install.
 
 Open `field-training-tracker.html` in a browser.
 
-## Cross-device sharing (Dropbox-style)
+## Can JSON be saved on the device or Dropbox?
 
-The app saves to **JSON** and a **pictures folder** so you can share across devices.
+Yes — both.
 
-### Best option (Chrome / Edge on desktop)
+| Mode | Where JSON lives | Multi-device |
+|------|------------------|------------|
+| **On this device** | Browser storage on that phone/PC | No (one device) |
+| **Dropbox folder** | `state.json` + `pictures/` inside a Dropbox (or Drive) folder | Yes — live sync on desktops |
 
-1. Create a folder in Dropbox or Google Drive, e.g. `RebuildProtocol`
-2. Open the HTML file
-3. Click **Connect folder** and pick that folder
+When Dropbox folder mode is on, the app also keeps a backup copy on the device.
+
+## Live multi-device (Dropbox)
+
+1. Install Dropbox and create a folder, e.g. `RebuildProtocol`
+2. Open this HTML in **Chrome or Edge**
+3. Tap **Dropbox folder** and choose that folder
 4. The app writes:
-   - `state.json` — workouts, walks, body weight, photo references
-   - `pictures/` — uploaded exercise photos
-5. Dropbox/Drive syncs that folder to your other devices
+   - `state.json` — workouts, walks, weight, photo links
+   - `pictures/` — exercise photos
+5. On another PC with the same Dropbox folder: open the HTML → connect that folder
+6. Changes sync through Dropbox; the app checks for updates every few seconds (**Refresh now** forces a pull)
 
-On another computer with Chrome/Edge, open the same HTML file and **Connect folder** to the synced folder.
+## Phones
 
-### Phone / Safari / other browsers
+Most phone browsers cannot attach a live folder. Use:
 
-Use **Export JSON** / **Import JSON**:
-
-1. Export `state.json` on one device
-2. Put it in Dropbox/Drive (or AirDrop it)
-3. Import it on the other device
-
-Photos can still be added; without a connected folder they are stored inside the JSON file.
+1. **Export JSON** on one device
+2. Save/share `state.json` through the Dropbox app
+3. **Import JSON** on the other device
 
 ## Features
 
@@ -36,8 +40,3 @@ Photos can still be added; without a connected folder they are stored inside the
 - Check off exercises, log walks, log body weight
 - Form tips + exercise photos
 - Progress streak and body-weight trend
-- Local browser save when no folder is connected
-
-## Files
-
-- `field-training-tracker.html` — the whole app

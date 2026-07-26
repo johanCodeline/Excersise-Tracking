@@ -34,8 +34,15 @@
   .sync-dot.err{background:var(--rust);}
   .sync-meta{font-size:11px; color:var(--muted2); line-height:1.45; min-width:0;}
   .sync-actions{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .mode-row{display:flex; gap:6px; margin-bottom:10px;}
+  .mode-pill{flex:1; padding:8px 10px; font-size:11px; border:1px solid var(--border); background:none; color:var(--muted2); text-align:left; line-height:1.35;}
+  .mode-pill strong{display:block; font-family:'Oswald',sans-serif; letter-spacing:.06em; text-transform:uppercase; font-size:11px; margin-bottom:2px;}
+  .mode-pill.active{border-color:var(--olive); color:var(--text); background:var(--olive-dim);}
+  .mode-pill.active strong{color:var(--olive);}
+  .mode-pill:disabled{opacity:.55; cursor:default;}
   .share-btn{font-size:11px; padding:6px 10px; border:1px solid var(--olive); color:var(--olive); background:none; white-space:nowrap;}
   .share-btn.ghost{border-color:var(--muted3); color:var(--muted2);}
+  .share-btn:disabled{opacity:.5; cursor:default;}
   .tabs{display:flex; gap:4px; padding:16px 20px 0;}
   .tab{flex:none; display:flex; align-items:center; gap:6px; padding:8px 12px; font-size:12px; background:transparent; color:var(--muted2); border:1px solid var(--border);}
   .tab.active{background:var(--olive); color:var(--bg); border-color:var(--olive);}
@@ -331,11 +338,40 @@ function saveLocal(next){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 }
 
+function isEmptyState(s){
+  return !Object.keys(s.logs||{}).length
+    && !(s.bodyweight||[]).length
+    && !(s.walks||[]).length
+    && !Object.keys(s.images||{}).length;
+}
+
+function markSynced(msg, status="ok"){
+  lastSyncedAt = new Date();
+  syncStatus = status;
+  syncMessage = msg;
+}
+
+function syncedLabel(){
+  if(!lastSyncedAt) return "";
+  const t = lastSyncedAt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return dirHandle ? `Live Dropbox/folder sync · last check ${t}` : `Saved on this device · ${t}`;
+}
+
 async function verifyPermission(handle, mode="readwrite"){
   const opts = { mode };
   if((await handle.queryPermission(opts)) === "granted") return true;
   if((await handle.requestPermission(opts)) === "granted") return true;
   return false;
+}
+
+async function applyLoadedState(next, message){
+  state = await hydrateImages(next);
+  lastJson = JSON.stringify(stripDisplay(state));
+  saveLocal(stripDisplay(state)); // always keep a device backup
+  markSynced(message, dirHandle ? "ok" : "warn");
+  const t = todayKey();
+  checked = (state.logs[t] && state.logs[t].done) || {};
+  render();
 }
 
 async function connectFolder(){
@@ -344,15 +380,19 @@ async function connectFolder(){
   dirHandle = handle;
   await ensurePicturesDir();
   await idbSet("dir", handle);
-  const next = await loadStateFromFolder();
-  state = await hydrateImages(next);
-  lastJson = JSON.stringify(stripDisplay(state));
-  syncStatus = "ok";
-  syncMessage = "Connected — saving to state.json + pictures/";
-  const t = todayKey();
-  checked = (state.logs[t] && state.logs[t].done) || {};
-  render();
-  showToast("Folder connected");
+
+  const folderState = await loadStateFromFolder();
+  const localState = loadLocal();
+  let next = folderState;
+
+  // First time in an empty Dropbox folder: seed it from this device
+  if(isEmptyState(folderState) && !isEmptyState(localState)){
+    next = localState;
+    await saveStateToFolder(next);
+  }
+
+  await applyLoadedState(next, "Live sync ON — JSON + pictures save into your Dropbox/shared folder");
+  showToast("Dropbox/shared folder connected");
 }
 
 async function reconnectFolder(){
@@ -363,10 +403,7 @@ async function reconnectFolder(){
     dirHandle = saved;
     await ensurePicturesDir();
     const next = await loadStateFromFolder();
-    state = await hydrateImages(next);
-    lastJson = JSON.stringify(stripDisplay(state));
-    syncStatus = "ok";
-    syncMessage = "Reconnected to shared folder";
+    await applyLoadedState(next, "Live sync ON — reconnected to Dropbox/shared folder");
     return true;
   }catch{
     return false;
@@ -378,13 +415,8 @@ async function disconnectFolder(){
   picturesHandle = null;
   revokeObjectUrls();
   await idbDel("dir");
-  state = await hydrateImages(loadLocal());
-  lastJson = JSON.stringify(stripDisplay(state));
-  syncStatus = "warn";
-  syncMessage = "Using this browser only — connect a folder to share";
-  const t = todayKey();
-  checked = (state.logs[t] && state.logs[t].done) || {};
-  render();
+  await applyLoadedState(loadLocal(), "On this device only — enable Dropbox folder for live multi-device sync");
+  showToast("Switched to this device only");
 }
 
 function stripDisplay(s){
@@ -401,14 +433,13 @@ async function persist(immediate){
       syncMessage = "Saving…";
       render();
       const payload = stripDisplay(state);
+      // Always keep a copy on this device
+      saveLocal(payload);
       if(dirHandle){
         await saveStateToFolder(payload);
-        syncStatus = "ok";
-        syncMessage = "Saved to state.json in your shared folder";
+        markSynced("Saved to Dropbox/shared folder (state.json) + this device");
       } else {
-        saveLocal(payload);
-        syncStatus = "warn";
-        syncMessage = "Saved in this browser — Export JSON or Connect folder to share";
+        markSynced("Saved on this device — connect Dropbox folder for live multi-device", "warn");
       }
       lastJson = JSON.stringify(payload);
       render();
@@ -429,7 +460,7 @@ function exportJson(){
   a.download = "state.json";
   a.click();
   URL.revokeObjectURL(a.href);
-  showToast("Downloaded state.json — put it in Dropbox/Drive to share");
+  showToast("Downloaded state.json — save it in Dropbox to use on another device");
 }
 
 function importJsonFile(file){
@@ -441,7 +472,7 @@ function importJsonFile(file){
       const t = todayKey();
       checked = (state.logs[t] && state.logs[t].done) || {};
       await persist(true);
-      showToast("Imported state.json");
+      showToast(dirHandle ? "Imported into live Dropbox folder" : "Imported onto this device");
     }catch(e){
       showToast(e.message || "Invalid JSON");
     }
@@ -497,23 +528,31 @@ async function removePhoto(exercise){
   await persist(true);
 }
 
-async function pollFolder(){
-  if(!dirHandle || document.hidden || imageModalFor || window.__showWalkModal || window.__showBwModal) return;
+async function pollFolder(force=false){
+  if(!dirHandle) return;
+  if(!force && (document.hidden || imageModalFor || window.__showWalkModal || window.__showBwModal)) return;
   try{
     const remote = await loadStateFromFolder();
     const remoteJson = JSON.stringify(remote);
     if(remoteJson !== lastJson){
       state = await hydrateImages(remote);
       lastJson = remoteJson;
+      saveLocal(remote);
       const t = todayKey();
       checked = (state.logs[t] && state.logs[t].done) || {};
-      syncStatus = "ok";
-      syncMessage = "Updated from shared folder";
+      markSynced("Live update from Dropbox/shared folder");
       render();
+      if(force) showToast("Pulled latest from folder");
+    } else {
+      markSynced("Live sync ON — watching Dropbox/shared folder");
+      if(force){
+        showToast("Already up to date");
+        render();
+      }
     }
   }catch(e){
     syncStatus = "err";
-    syncMessage = e.message || "Could not read folder";
+    syncMessage = e.message || "Could not read Dropbox/shared folder";
     render();
   }
 }
@@ -531,6 +570,7 @@ let toastMsg = null;
 let toastTimer = null;
 let saveTimer = null;
 let lastJson = "";
+let lastSyncedAt = null;
 
 const app = document.getElementById("app");
 
@@ -546,15 +586,17 @@ async function init(){
   if(!reconnected){
     state = await hydrateImages(loadLocal());
     lastJson = JSON.stringify(stripDisplay(state));
-    syncStatus = supportsFolder() ? "warn" : "warn";
-    syncMessage = supportsFolder()
-      ? "This browser only — Connect a Dropbox/Drive folder to share across devices"
-      : "This browser only — Export/Import state.json to share via Dropbox";
+    markSynced(
+      supportsFolder()
+        ? "On this device — tap Dropbox folder below for live multi-device tracking"
+        : "On this device — Export/Import state.json through Dropbox on phones",
+      "warn"
+    );
   }
   const t = todayKey();
   checked = (state.logs[t] && state.logs[t].done) || {};
   render();
-  setInterval(pollFolder, 5000);
+  setInterval(() => pollFolder(false), 3000);
 }
 
 function gaugeSvg(pct, label, sub){
@@ -653,16 +695,28 @@ function render(){
       </div>
     </div>
     <div class="sync-bar">
+      <div class="mode-row">
+        <button class="mode-pill ${dirHandle?'':'active'}" data-mode="device" ${dirHandle?'':'disabled'}>
+          <strong>On this device</strong>
+          Saves in the browser on this phone/PC
+        </button>
+        <button class="mode-pill ${dirHandle?'active':''}" data-mode="dropbox" ${supportsFolder()?'':'disabled'} title="${supportsFolder()?'':'Use Chrome/Edge on desktop for live Dropbox folder sync'}">
+          <strong>Dropbox folder</strong>
+          ${supportsFolder() ? (dirHandle ? "Live multi-device via state.json" : "Tap to connect a Dropbox folder") : "Export/Import JSON via Dropbox on this browser"}
+        </button>
+      </div>
       <div class="sync-row">
         <div style="display:flex;gap:8px;min-width:0">
           <span class="sync-dot ${esc(syncStatus)}"></span>
-          <div class="sync-meta">${esc(syncMessage)}</div>
+          <div class="sync-meta">
+            <div>${esc(syncMessage)}</div>
+            <div class="mono" style="color:var(--muted3);margin-top:2px">${esc(syncedLabel())}</div>
+          </div>
         </div>
       </div>
       <div class="sync-actions">
-        ${supportsFolder() ? (dirHandle
-          ? `<button class="share-btn ghost" data-disconnect="1">Disconnect</button>`
-          : `<button class="share-btn" data-connect="1">Connect folder</button>`) : ""}
+        ${dirHandle ? `<button class="share-btn" data-refresh="1">Refresh now</button>
+        <button class="share-btn ghost" data-disconnect="1">Use device only</button>` : ""}
         <button class="share-btn ghost" data-export="1">Export JSON</button>
         <button class="share-btn ghost" data-import="1">Import JSON</button>
         <input id="importJsonInput" type="file" accept="application/json,.json" style="display:none"/>
@@ -818,11 +872,11 @@ function render(){
 
     html += `
     <div class="info-box">
-      <div class="stencil" style="font-size:11px;color:var(--olive);margin-bottom:8px">Share across devices</div>
-      <p>Pure HTML + JavaScript. No server.</p>
-      <p>1. Create a folder in Dropbox/Google Drive (example: <span class="mono">RebuildProtocol</span>).</p>
-      <p>2. On Chrome/Edge desktop: click <strong>Connect folder</strong> and pick that folder. The app writes <span class="mono">state.json</span> and a <span class="mono">pictures/</span> folder there.</p>
-      <p>3. On phone or another PC: Import the synced <span class="mono">state.json</span>, or connect the same folder where supported.</p>
+      <div class="stencil" style="font-size:11px;color:var(--olive);margin-bottom:8px">JSON on device or Dropbox</div>
+      <p><strong>On this device:</strong> always saves in the browser. Works offline on one phone/PC.</p>
+      <p><strong>Live multi-device:</strong> create a Dropbox folder (e.g. <span class="mono">RebuildProtocol</span>). On Chrome/Edge, tap <strong>Dropbox folder</strong> and pick it. The app writes <span class="mono">state.json</span> + <span class="mono">pictures/</span> there and checks for updates every few seconds.</p>
+      <p>On another PC with Dropbox installed, open this HTML and connect the same folder — workouts stay in sync.</p>
+      <p>On phones: use <strong>Export JSON</strong> / <strong>Import JSON</strong> with the Dropbox app (or AirDrop) when live folder connect is not available.</p>
     </div>
     <button class="ghost-btn ghost-olive" style="width:100%;margin-top:16px" data-open="bw"><span class="stencil" style="font-size:11px">Log Body Weight</span></button>`;
   }
@@ -919,11 +973,19 @@ function wireEvents(){
     el.onclick = () => removePhoto(el.dataset.removeimg);
   });
 
-  const connectBtn = app.querySelector("[data-connect]");
-  if(connectBtn) connectBtn.onclick = async () => {
-    try{ await connectFolder(); }
-    catch(e){ if(e && e.name !== "AbortError") showToast(e.message || "Could not connect folder"); }
-  };
+  const dropboxModeBtn = app.querySelector('[data-mode="dropbox"]');
+  if(dropboxModeBtn && !dirHandle && supportsFolder()){
+    dropboxModeBtn.onclick = async () => {
+      try{ await connectFolder(); }
+      catch(e){ if(e && e.name !== "AbortError") showToast(e.message || "Could not connect Dropbox folder"); }
+    };
+  }
+  const deviceModeBtn = app.querySelector('[data-mode="device"]');
+  if(deviceModeBtn && dirHandle){
+    deviceModeBtn.onclick = () => disconnectFolder();
+  }
+  const refreshBtn = app.querySelector("[data-refresh]");
+  if(refreshBtn) refreshBtn.onclick = () => pollFolder(true);
   const disconnectBtn = app.querySelector("[data-disconnect]");
   if(disconnectBtn) disconnectBtn.onclick = () => disconnectFolder();
 
