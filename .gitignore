@@ -1,0 +1,8 @@
+.DS_Store
+*.log
+node_modules/
+data/
+
+# Keep project pictures/ folder; ignore uploaded image files
+pictures/*
+!pictures/.gitkeep

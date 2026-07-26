@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1C1F1A">
 <title>Rebuild Protocol</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -25,6 +26,23 @@
   .header-row{display:flex; align-items:center; justify-content:space-between;}
   .title{font-size:24px; font-weight:700; margin:2px 0 0; font-family:'Oswald',sans-serif;}
   .streak-badge{display:flex; align-items:center; gap:5px; padding:5px 10px; background:var(--rust-dim); border:1px solid var(--rust); color:var(--rust);}
+  .sync-bar{margin-top:12px; padding-top:12px; border-top:1px solid var(--border);}
+  .sync-row{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
+  .sync-dot{width:8px; height:8px; border-radius:50%; background:var(--muted3); flex-shrink:0; margin-top:4px;}
+  .sync-dot.ok{background:var(--olive);}
+  .sync-dot.warn{background:#C9A227;}
+  .sync-dot.err{background:var(--rust);}
+  .sync-meta{font-size:11px; color:var(--muted2); line-height:1.45; min-width:0;}
+  .sync-actions{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .mode-row{display:flex; gap:6px; margin-bottom:10px;}
+  .mode-pill{flex:1; padding:8px 10px; font-size:11px; border:1px solid var(--border); background:none; color:var(--muted2); text-align:left; line-height:1.35;}
+  .mode-pill strong{display:block; font-family:'Oswald',sans-serif; letter-spacing:.06em; text-transform:uppercase; font-size:11px; margin-bottom:2px;}
+  .mode-pill.active{border-color:var(--olive); color:var(--text); background:var(--olive-dim);}
+  .mode-pill.active strong{color:var(--olive);}
+  .mode-pill:disabled{opacity:.55; cursor:default;}
+  .share-btn{font-size:11px; padding:6px 10px; border:1px solid var(--olive); color:var(--olive); background:none; white-space:nowrap;}
+  .share-btn.ghost{border-color:var(--muted3); color:var(--muted2);}
+  .share-btn:disabled{opacity:.5; cursor:default;}
   .tabs{display:flex; gap:4px; padding:16px 20px 0;}
   .tab{flex:none; display:flex; align-items:center; gap:6px; padding:8px 12px; font-size:12px; background:transparent; color:var(--muted2); border:1px solid var(--border);}
   .tab.active{background:var(--olive); color:var(--bg); border-color:var(--olive);}
@@ -38,10 +56,26 @@
   .exercise-card{background:var(--panel); border:1px solid var(--border); margin-bottom:8px;}
   .exercise-card.done{background:var(--olive-dim); border-color:var(--olive);}
   .exercise-row{display:flex; align-items:center; justify-content:space-between; padding:12px 16px;}
-  .ex-main{flex:1; text-align:left; background:none; border:none; padding:0; color:inherit;}
+  .ex-main{flex:1; text-align:left; background:none; border:none; padding:0; color:inherit; display:flex; align-items:center; gap:12px; min-width:0;}
+  .ex-icon{
+    width:40px; height:40px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--border); background:var(--bg); color:var(--olive);
+  }
+  .exercise-card.done .ex-icon{border-color:var(--olive); color:var(--olive); background:var(--olive-dim);}
+  .ex-icon svg{width:24px; height:24px; display:block;}
+  .ex-text{min-width:0;}
   .ex-name{font-size:14px; font-weight:500;}
+  .ex-cue{font-size:10px; color:var(--muted2); margin-top:2px; letter-spacing:.04em; text-transform:uppercase; font-family:'Oswald',sans-serif;}
   .ex-meta{font-size:12px; color:var(--muted); margin-top:2px; font-family:'IBM Plex Mono',monospace;}
   .ex-actions{display:flex; align-items:center; gap:10px; flex-shrink:0;}
+  .week-ex-icon{
+    width:28px; height:28px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--border); color:var(--olive); background:var(--bg);
+  }
+  .week-ex-icon svg{width:18px; height:18px; display:block;}
+  .week-ex-label{display:flex; flex-direction:column; align-items:flex-start; min-width:0; flex:1;}
   .form-btn{font-size:11px; padding:5px 8px; border:1px solid var(--muted3); color:var(--muted2); background:none;}
   .checkbox{width:24px; height:24px; display:flex; align-items:center; justify-content:center; border:1px solid var(--muted3); background:none; flex-shrink:0;}
   .checkbox.done{background:var(--olive); border-color:var(--olive);}
@@ -69,33 +103,43 @@
   .week-exercises{padding:0 16px 12px; border-top:1px solid var(--border);}
   .week-ex-row{padding:10px 0; border-bottom:1px solid #2A2E24;}
   .week-ex-row:last-child{border-bottom:none;}
-  .week-ex-top{width:100%; display:flex; align-items:center; justify-content:space-between; background:none; border:none; color:inherit; text-align:left; padding:0;}
+  .week-ex-top{width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; background:none; border:none; color:inherit; text-align:left; padding:0;}
   .week-ex-name{font-size:12px; color:var(--text2);}
+  .week-ex-cue{font-size:9px; color:var(--muted3); margin-top:1px; letter-spacing:.04em; text-transform:uppercase; font-family:'Oswald',sans-serif;}
   .stats-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:24px;}
   .stat-card{padding:14px; background:var(--panel); border:1px solid var(--border);}
   .stat-val{font-size:20px; font-weight:700; margin-top:8px; font-family:'IBM Plex Mono',monospace;}
   .stat-label{font-size:10px; color:var(--muted); margin-top:2px; display:block;}
   .empty-note{padding:28px; text-align:center; font-size:12px; color:var(--muted); border:1px dashed var(--border);}
+  .info-box{margin-top:24px;padding:14px;border:1px solid var(--border);background:var(--panel);}
+  .info-box p{font-size:12px;color:var(--text2);margin:0 0 10px;line-height:1.5;}
   .modal-overlay{position:fixed; inset:0; background:#00000099; display:flex; align-items:center; justify-content:center; padding:24px; z-index:50;}
   .modal-box{width:100%; max-width:380px; padding:20px; background:var(--panel2); border:1px solid var(--border);}
-  .modal-head{display:flex; align-items:center; justify-content:between; justify-content:space-between; margin-bottom:16px;}
+  .modal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
   .modal-x{background:none; border:none; color:var(--muted);}
   .modal-input{width:100%; padding:10px 12px; margin-bottom:12px; background:var(--bg); border:1px solid var(--muted3); color:var(--text); outline:none; font-family:'IBM Plex Mono',monospace; font-size:13px;}
   .modal-save{width:100%; padding:10px; background:var(--olive); color:var(--bg); border:none; font-family:'Oswald',sans-serif; letter-spacing:.08em; font-size:13px;}
   .modal-hint{font-size:11px; color:var(--muted); margin:-6px 0 12px; line-height:1.5;}
-  .modal-hint a{color:var(--olive);}
+  .file-btn{width:100%; padding:12px; margin-bottom:8px; display:flex; align-items:center; justify-content:center; gap:8px; background:none; border:1px dashed var(--olive); color:var(--olive); font-size:12px;}
+  .file-btn.secondary{border-color:var(--muted3); color:var(--muted2);}
+  .or-line{text-align:center; font-size:10px; color:var(--muted3); margin:10px 0 12px; letter-spacing:.08em; text-transform:uppercase;}
+  .upload-path{font-size:11px; color:var(--muted2); margin:0 0 12px; line-height:1.45; word-break:break-all;}
+  .upload-path .mono{color:var(--olive);}
   .ex-image{width:100%; max-height:160px; object-fit:contain; background:var(--bg); border:1px solid var(--border); display:block;}
   .image-actions{display:flex; gap:8px; margin-top:6px;}
   .small-btn{font-size:11px; padding:5px 8px; background:none; display:flex; align-items:center; gap:4px;}
   .add-photo-btn{width:100%; padding:8px; margin-top:10px; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; background:none; border:1px dashed var(--muted3); color:var(--muted2);}
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--panel2); border:1px solid var(--olive); color:var(--text); padding:10px 14px; font-size:12px; z-index:80; max-width:90%;}
   svg{display:block;}
+  @media (max-width:420px){
+    .title{font-size:20px;}
+  }
 </style>
 </head>
 <body>
 <div id="app"></div>
 
 <script>
-// ---------- Program library ----------
 const PROGRAM = {
   MON: { name: "PUSH", focus: "Chest / Shoulders / Triceps", estMinutes: 35, exercises: [
     { name: "Push-ups", sets: 4, reps: "AMRAP", note: "or bench press if available" },
@@ -168,22 +212,702 @@ const FORM_GUIDE = {
   "Stretching": { steps: ["Ease into each stretch gradually", "Hold 20-30 seconds per muscle group", "Breathe steadily, don't bounce"], mistakes: ["Bouncing in the stretch", "Stretching to the point of sharp pain"] },
 };
 
+// Simple line icons so each exercise shows what movement to do
+const EXERCISE_VISUAL = {
+  "Push-ups": { cue: "Chest push on floor", icon: "pushup" },
+  "Overhead Press": { cue: "Press weight up", icon: "press" },
+  "Incline Push-ups / DB Press": { cue: "Push on an angle", icon: "incline" },
+  "Tricep Dips": { cue: "Lower on arms", icon: "dip" },
+  "Lateral Raises": { cue: "Raise arms out", icon: "raise" },
+  "Pull-ups / Assisted Pull-ups": { cue: "Pull chin over bar", icon: "pullup" },
+  "Bent-over Rows": { cue: "Pull weight to ribs", icon: "row" },
+  "Inverted Rows": { cue: "Pull chest to bar", icon: "inverted" },
+  "Bicep Curls": { cue: "Curl weight up", icon: "curl" },
+  "Face Pulls / Band Pull-aparts": { cue: "Pull to face", icon: "facepull" },
+  "Bodyweight Squats / Back Squat": { cue: "Sit hips down", icon: "squat" },
+  "Walking Lunges": { cue: "Step and drop", icon: "lunge" },
+  "Romanian Deadlift": { cue: "Hinge at hips", icon: "hinge" },
+  "Step-ups": { cue: "Step onto box", icon: "step" },
+  "Calf Raises": { cue: "Rise on toes", icon: "calf" },
+  "Ruck March (weighted pack)": { cue: "Walk with pack", icon: "ruck" },
+  "Plank": { cue: "Hold straight body", icon: "plank" },
+  "Hanging Knee Raises": { cue: "Knees to chest", icon: "knees" },
+  "Russian Twists": { cue: "Twist side to side", icon: "twist" },
+  "Deadlift / Kettlebell Swings": { cue: "Lift from floor", icon: "deadlift" },
+  "Goblet Squats": { cue: "Squat holding weight", icon: "goblet" },
+  "Push Press": { cue: "Dip then press up", icon: "pushpress" },
+  "Renegade Rows": { cue: "Plank + row", icon: "renegade" },
+  "Brisk Walk / Ruck (light)": { cue: "Easy walk", icon: "walk" },
+  "Mobility Flow": { cue: "Move joints freely", icon: "mobility" },
+  "Stretching": { cue: "Hold long stretches", icon: "stretch" },
+};
+
+const ICON_PATHS = {
+  pushup: `<path d="M4 16h16"/><circle cx="8" cy="10" r="2"/><path d="M10 10h6l2 6"/><path d="M6 14l4-4"/>`,
+  press: `<path d="M12 20V8"/><path d="M8 8h8"/><circle cx="12" cy="5" r="2"/><path d="M7 14h10"/>`,
+  incline: `<path d="M4 18l8-10 8 4"/><circle cx="9" cy="10" r="2"/><path d="M11 11l5 2"/>`,
+  dip: `<path d="M6 6v6c0 2 2 4 6 4s6-2 6-4V6"/><path d="M4 8h4M16 8h4"/><circle cx="12" cy="4" r="1.5"/>`,
+  raise: `<path d="M12 20v-6"/><circle cx="12" cy="6" r="2"/><path d="M12 10L5 14M12 10l7 4"/><path d="M4 16h3M17 16h3"/>`,
+  pullup: `<path d="M4 5h16"/><path d="M8 5v5"/><path d="M16 5v5"/><circle cx="12" cy="14" r="2"/><path d="M12 16v4"/>`,
+  row: `<path d="M5 18l7-8"/><circle cx="14" cy="8" r="2"/><path d="M14 10l5 3"/><path d="M8 12h6"/>`,
+  inverted: `<path d="M4 8h16"/><circle cx="12" cy="16" r="2"/><path d="M8 10v4M16 10v4"/><path d="M12 14V10"/>`,
+  curl: `<path d="M10 20v-8"/><circle cx="10" cy="8" r="2"/><path d="M12 9c3 0 5 2 5 5"/><path d="M15 16h4"/>`,
+  facepull: `<circle cx="12" cy="7" r="2"/><path d="M12 9v4"/><path d="M5 12l7-1 7 1"/><path d="M5 12v4M19 12v4"/>`,
+  squat: `<circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><path d="M8 20l4-9 4 9"/><path d="M7 14h10"/>`,
+  lunge: `<circle cx="10" cy="5" r="2"/><path d="M10 7v5"/><path d="M10 12l-4 8M10 12l6 3 2 5"/>`,
+  hinge: `<circle cx="16" cy="6" r="2"/><path d="M16 8L8 14"/><path d="M8 14v6M14 12l4 2"/><path d="M6 14h5"/>`,
+  step: `<path d="M4 18h6v-4h6V8h4"/><circle cx="8" cy="10" r="2"/><path d="M8 12v6"/>`,
+  calf: `<circle cx="12" cy="5" r="2"/><path d="M12 7v9"/><path d="M9 20h6"/><path d="M12 16l-3 4M12 16l3 4"/>`,
+  ruck: `<circle cx="10" cy="6" r="2"/><path d="M10 8v8l-3 4M10 12h4l2 8"/><path d="M14 9h3v5h-3z"/>`,
+  plank: `<circle cx="5" cy="10" r="2"/><path d="M7 10h12"/><path d="M7 10v6M19 10v6"/><path d="M5 16h16"/>`,
+  knees: `<path d="M4 4h16"/><circle cx="12" cy="8" r="2"/><path d="M12 10v2"/><path d="M8 18l4-6 4 6"/>`,
+  twist: `<circle cx="12" cy="6" r="2"/><path d="M12 8v5"/><path d="M7 14c2 3 8 3 10 0"/><path d="M6 18h4M14 18h4"/>`,
+  deadlift: `<circle cx="12" cy="5" r="2"/><path d="M12 7v7"/><path d="M7 20l5-6 5 6"/><path d="M5 18h14"/>`,
+  goblet: `<circle cx="12" cy="5" r="2"/><path d="M12 7v3"/><path d="M9 10h6v3H9z"/><path d="M8 20l4-7 4 7"/>`,
+  pushpress: `<circle cx="12" cy="4" r="1.8"/><path d="M12 6v5"/><path d="M8 11h8"/><path d="M9 20l3-7 3 7"/><path d="M7 14h10"/>`,
+  renegade: `<circle cx="5" cy="9" r="1.8"/><path d="M7 9h11"/><path d="M7 9v7M18 9v7"/><path d="M14 9l4-4"/>`,
+  walk: `<circle cx="14" cy="5" r="2"/><path d="M14 7l-2 5 3 3M12 12l-4 7M15 15l3 5"/><path d="M8 10h4"/>`,
+  mobility: `<circle cx="12" cy="12" r="7"/><path d="M12 5v3M12 16v3M5 12h3M16 12h3"/><circle cx="12" cy="12" r="2"/>`,
+  stretch: `<circle cx="7" cy="8" r="2"/><path d="M9 8h8"/><path d="M17 8l2 8M9 10l-2 8"/><path d="M11 14h6"/>`,
+  default: `<circle cx="12" cy="7" r="2"/><path d="M12 9v5"/><path d="M8 20l4-6 4 6"/>`,
+};
+
+function exerciseVisual(name){
+  return EXERCISE_VISUAL[name] || { cue: "Follow form tips", icon: "default" };
+}
+
+function exerciseIconSvg(name, sizeClass){
+  const visual = exerciseVisual(name);
+  const paths = ICON_PATHS[visual.icon] || ICON_PATHS.default;
+  const cue = String(visual.cue).replace(/"/g, "&quot;");
+  return `<span class="${sizeClass}" aria-hidden="true" title="${cue}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>
+  </span>`;
+}
+
+const STORAGE_KEY = "field-tracker-state";
+const DROPBOX_KEY_STORAGE = "rebuild-dropbox-app-key";
+const DB_NAME = "rebuild-protocol";
+const DB_STORE = "handles";
+const PROJECT_HTML = "field-training-tracker.html";
+const PROJECT_STATE = "state.json";
+const PROJECT_PICTURES = "pictures";
+const DROPBOX_WEB = "https://www.dropbox.com/home";
+const EMPTY_STATE = { logs:{}, bodyweight:[], startWeight:null, walks:[], images:{} };
+
+function isAndroid(){ return /Android/i.test(navigator.userAgent); }
+function isAppleMobile(){ return /iPhone|iPad|iPod/i.test(navigator.userAgent); }
+function isMobileDevice(){ return isAndroid() || isAppleMobile() || /Mobile/i.test(navigator.userAgent); }
+
+function getDropboxAppKey(){
+  try{ return (localStorage.getItem(DROPBOX_KEY_STORAGE) || "").trim(); }
+  catch{ return ""; }
+}
+function setDropboxAppKey(key){
+  const val = String(key || "").trim();
+  if(val) localStorage.setItem(DROPBOX_KEY_STORAGE, val);
+  else localStorage.removeItem(DROPBOX_KEY_STORAGE);
+}
+
+function openDropbox(pathHint){
+  // Opens Dropbox app / site without leaving this tracker page when possible
+  const web = pathHint && /^https?:\/\//i.test(pathHint) ? pathHint : DROPBOX_WEB;
+  showToast("Opening Dropbox on this device…");
+
+  if(isAndroid()){
+    const intent =
+      "intent://home/#Intent;scheme=https;package=com.dropbox.android;S.browser_fallback_url=" +
+      encodeURIComponent(web) + ";end";
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = intent;
+    document.body.appendChild(iframe);
+    setTimeout(() => {
+      try{ window.open(web, "_blank", "noopener"); }catch(_){}
+      try{ iframe.remove(); }catch(_){}
+    }, 700);
+    return;
+  }
+
+  if(isAppleMobile()){
+    // Try app scheme in a hidden iframe, then open Dropbox web/app handoff in a new tab
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = "dbapi-2://1/home";
+    document.body.appendChild(iframe);
+    setTimeout(() => {
+      try{ window.open(web, "_blank", "noopener"); }catch(_){ window.open(web); }
+      try{ iframe.remove(); }catch(_){}
+    }, 400);
+    return;
+  }
+
+  window.open(web, "_blank", "noopener");
+}
+
+function loadDropboxChooser(){
+  return new Promise((resolve, reject) => {
+    if(window.Dropbox && typeof window.Dropbox.choose === "function"){
+      resolve();
+      return;
+    }
+    const key = getDropboxAppKey();
+    if(!key){
+      reject(new Error("Add your Dropbox App key under Progress to open Dropbox Chooser"));
+      return;
+    }
+    const old = document.getElementById("dropboxjs");
+    if(old) old.remove();
+    const s = document.createElement("script");
+    s.src = "https://www.dropbox.com/static/api/2/dropins.js";
+    s.id = "dropboxjs";
+    s.setAttribute("data-app-key", key);
+    s.onload = () => {
+      if(window.Dropbox && typeof window.Dropbox.choose === "function") resolve();
+      else reject(new Error("Dropbox failed to load"));
+    };
+    s.onerror = () => reject(new Error("Could not load Dropbox on this device"));
+    document.head.appendChild(s);
+  });
+}
+
+function chooseFromDropbox(opts){
+  return loadDropboxChooser().then(() => new Promise((resolve, reject) => {
+    window.Dropbox.choose({
+      linkType: "direct",
+      multiselect: false,
+      folderselect: false,
+      success: (files) => resolve(files || []),
+      cancel: () => reject(new DOMException("Aborted", "AbortError")),
+      ...opts,
+    });
+  }));
+}
+
+async function importJsonFromDropboxChooser(){
+  const files = await chooseFromDropbox({ extensions: [".json"] });
+  if(!files.length) throw new Error("No file selected in Dropbox");
+  const res = await fetch(files[0].link);
+  if(!res.ok) throw new Error("Could not download from Dropbox");
+  const text = await res.text();
+  const blob = new Blob([text], { type: "application/json" });
+  importJsonFile(new File([blob], files[0].name || PROJECT_STATE, { type: "application/json" }));
+}
+
+async function pickImageFromDropboxChooser(){
+  const files = await chooseFromDropbox({
+    extensions: [".png", ".jpg", ".jpeg", ".webp", ".gif", ".heic", ".bmp"],
+  });
+  if(!files.length) throw new Error("No image selected in Dropbox");
+  const res = await fetch(files[0].link);
+  if(!res.ok) throw new Error("Could not download image from Dropbox");
+  const blob = await res.blob();
+  const name = files[0].name || "dropbox-photo.jpg";
+  return new File([blob], name, { type: blob.type || "image/jpeg" });
+}
+
+async function openDropboxThenPick(inputEl, tip){
+  // Keep the tracker open; open Dropbox alongside, then show the system picker
+  // (on phones the picker can reach Dropbox via Browse / Locations)
+  openDropbox();
+  showToast(tip || "In the file picker: Browse / Locations → Dropbox");
+  setTimeout(() => { if(inputEl) inputEl.click(); }, isMobileDevice() ? 500 : 250);
+}
+
 function todayKey(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function dayCode(){ return DAY_KEYS[new Date().getDay()]; }
-function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+function esc(s){ const d=document.createElement("div"); d.textContent=s==null?"":String(s); return d.innerHTML; }
+function slugify(name){
+  return String(name).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60) || "photo";
+}
+function normalizeState(raw){
+  const data = raw && typeof raw === "object" ? raw : {};
+  return {
+    logs: data.logs && typeof data.logs === "object" ? data.logs : {},
+    bodyweight: Array.isArray(data.bodyweight) ? data.bodyweight : [],
+    startWeight: typeof data.startWeight === "number" ? data.startWeight : null,
+    walks: Array.isArray(data.walks) ? data.walks : [],
+    images: data.images && typeof data.images === "object" ? data.images : {},
+  };
+}
+function supportsFolder(){ return typeof window.showDirectoryPicker === "function"; }
 
-// ---------- Storage ----------
-async function loadState(){
+// ---------- IndexedDB for remembering the folder handle ----------
+function idbOpen(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbGet(key){
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, "readonly");
+    const req = tx.objectStore(DB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSet(key, value){
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, "readwrite");
+    tx.objectStore(DB_STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function idbDel(key){
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, "readwrite");
+    tx.objectStore(DB_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ---------- Folder / local storage ----------
+let dirHandle = null;
+let picturesHandle = null;
+let objectUrls = {};
+
+function revokeObjectUrls(){
+  Object.values(objectUrls).forEach(u => { try{ URL.revokeObjectURL(u); }catch(_){} });
+  objectUrls = {};
+}
+
+async function ensureProjectLayout(){
+  if(!dirHandle) return null;
+  // Project folder layout:
+  //   field-training-tracker.html
+  //   state.json
+  //   pictures/
+  picturesHandle = await dirHandle.getDirectoryHandle(PROJECT_PICTURES, { create: true });
   try{
-    const res = await window.storage.get("field-tracker-state");
-    return res ? JSON.parse(res.value) : { logs:{}, bodyweight:[], startWeight:null, walks:[], images:{} };
+    await dirHandle.getFileHandle(PROJECT_STATE);
   }catch{
-    return { logs:{}, bodyweight:[], startWeight:null, walks:[], images:{} };
+    await writeTextFile(dirHandle, PROJECT_STATE, JSON.stringify(EMPTY_STATE, null, 2));
+  }
+  return picturesHandle;
+}
+
+async function ensurePicturesDir(){
+  return ensureProjectLayout();
+}
+
+async function folderHasProjectHtml(){
+  if(!dirHandle) return false;
+  try{
+    await dirHandle.getFileHandle(PROJECT_HTML);
+    return true;
+  }catch{
+    return false;
   }
 }
-async function saveState(state){
-  try{ await window.storage.set("field-tracker-state", JSON.stringify(state)); }
-  catch(e){ console.error("save failed", e); }
+
+async function readTextFile(handle){
+  const file = await handle.getFile();
+  return file.text();
+}
+
+async function writeTextFile(parent, name, text){
+  const fileHandle = await parent.getFileHandle(name, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(text);
+  await writable.close();
+}
+
+async function loadStateFromFolder(){
+  await ensureProjectLayout();
+  try{
+    const fileHandle = await dirHandle.getFileHandle(PROJECT_STATE);
+    const text = await readTextFile(fileHandle);
+    return normalizeState(JSON.parse(text));
+  }catch{
+    const fresh = { ...EMPTY_STATE };
+    await writeTextFile(dirHandle, PROJECT_STATE, JSON.stringify(fresh, null, 2));
+    return fresh;
+  }
+}
+
+async function saveStateToFolder(next){
+  await ensureProjectLayout();
+  await writeTextFile(dirHandle, PROJECT_STATE, JSON.stringify(next, null, 2));
+}
+
+async function loadStateFromProjectFile(){
+  // Works when the project is opened over http(s), or some local viewers
+  try{
+    const res = await fetch("./" + PROJECT_STATE, { cache: "no-store" });
+    if(!res.ok) return null;
+    return normalizeState(await res.json());
+  }catch{
+    return null;
+  }
+}
+
+async function resolveImageSrc(exName, ref){
+  if(!ref) return "";
+  if(ref.startsWith("data:") || ref.startsWith("http://") || ref.startsWith("https://") || ref.startsWith("blob:")) return ref;
+  if(ref.startsWith("pictures/") && picturesHandle){
+    if(objectUrls[ref]) return objectUrls[ref];
+    try{
+      const name = ref.slice("pictures/".length);
+      const fileHandle = await picturesHandle.getFileHandle(name);
+      const file = await fileHandle.getFile();
+      const url = URL.createObjectURL(file);
+      objectUrls[ref] = url;
+      return url;
+    }catch{
+      return "";
+    }
+  }
+  return ref;
+}
+
+async function hydrateImages(next){
+  const out = { ...next, images: { ...(next.images||{}) } };
+  const display = {};
+  for(const [name, ref] of Object.entries(out.images)){
+    display[name] = await resolveImageSrc(name, ref);
+  }
+  out._displayImages = display;
+  return out;
+}
+
+function loadLocal(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return normalizeState(raw ? JSON.parse(raw) : null);
+  }catch{
+    return { ...EMPTY_STATE };
+  }
+}
+
+function saveLocal(next){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+}
+
+function isEmptyState(s){
+  return !Object.keys(s.logs||{}).length
+    && !(s.bodyweight||[]).length
+    && !(s.walks||[]).length
+    && !Object.keys(s.images||{}).length;
+}
+
+function markSynced(msg, status="ok"){
+  lastSyncedAt = new Date();
+  syncStatus = status;
+  syncMessage = msg;
+}
+
+function syncedLabel(){
+  if(!lastSyncedAt) return "";
+  const t = lastSyncedAt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return dirHandle
+    ? `Project folder · ${PROJECT_STATE} + ${PROJECT_PICTURES}/ · last check ${t}`
+    : `Saved on this device · ${t}`;
+}
+
+async function verifyPermission(handle, mode="readwrite"){
+  const opts = { mode };
+  if((await handle.queryPermission(opts)) === "granted") return true;
+  if((await handle.requestPermission(opts)) === "granted") return true;
+  return false;
+}
+
+async function applyLoadedState(next, message){
+  state = await hydrateImages(next);
+  lastJson = JSON.stringify(stripDisplay(state));
+  saveLocal(stripDisplay(state)); // always keep a device backup
+  markSynced(message, dirHandle ? "ok" : "warn");
+  const t = todayKey();
+  checked = (state.logs[t] && state.logs[t].done) || {};
+  render();
+}
+
+async function connectFolder(){
+  showToast("In the picker open Dropbox (or This PC → Dropbox) → your project folder");
+  const handle = await window.showDirectoryPicker({
+    mode: "readwrite",
+    id: "rebuild-project-folder",
+  });
+  if(!(await verifyPermission(handle))) throw new Error("Folder permission denied");
+  dirHandle = handle;
+
+  // Require the project folder itself (HTML + state.json + pictures/)
+  if(!(await folderHasProjectHtml())){
+    const useAnyway = window.confirm(
+      "Select the PROJECT folder inside Dropbox — the one that already contains:\n\n" +
+      "  • " + PROJECT_HTML + "\n" +
+      "  • " + PROJECT_STATE + "\n" +
+      "  • " + PROJECT_PICTURES + "/\n\n" +
+      "Tip: In the folder window, open Dropbox first, then pick this project.\n\n" +
+      "This folder does not contain " + PROJECT_HTML + ".\nUse it anyway and create state.json + pictures/ here?"
+    );
+    if(!useAnyway){
+      dirHandle = null;
+      picturesHandle = null;
+      throw new DOMException("Aborted", "AbortError");
+    }
+  }
+
+  await ensureProjectLayout();
+  await idbSet("dir", handle);
+
+  const folderState = await loadStateFromFolder();
+  const localState = loadLocal();
+  let next = folderState;
+
+  // Empty project state.json: seed from this device once
+  if(isEmptyState(folderState) && !isEmptyState(localState)){
+    next = localState;
+    await saveStateToFolder(next);
+  }
+
+  await applyLoadedState(next, "Project folder connected — saving " + PROJECT_STATE + " + " + PROJECT_PICTURES + "/ here");
+  showToast("Using project folder for JSON + pictures");
+}
+
+async function reconnectFolder(){
+  try{
+    const saved = await idbGet("dir");
+    if(!saved) return false;
+    if(!(await verifyPermission(saved))) return false;
+    dirHandle = saved;
+    await ensureProjectLayout();
+    const next = await loadStateFromFolder();
+    await applyLoadedState(next, "Reconnected to project folder (" + PROJECT_STATE + " + " + PROJECT_PICTURES + "/)");
+    return true;
+  }catch{
+    return false;
+  }
+}
+
+async function disconnectFolder(){
+  dirHandle = null;
+  picturesHandle = null;
+  revokeObjectUrls();
+  await idbDel("dir");
+  await applyLoadedState(loadLocal(), "On this device only — connect the project folder to use state.json + pictures/");
+  showToast("Switched to this device only");
+}
+
+function stripDisplay(s){
+  const { _displayImages, ...rest } = s;
+  return rest;
+}
+
+async function persist(immediate){
+  render();
+  clearTimeout(saveTimer);
+  const run = async () => {
+    try{
+      syncStatus = "warn";
+      syncMessage = "Saving…";
+      render();
+      const payload = stripDisplay(state);
+      // Always keep a copy on this device
+      saveLocal(payload);
+      if(dirHandle){
+        await saveStateToFolder(payload);
+        markSynced("Saved in project folder: " + PROJECT_STATE + " (+ device backup)");
+      } else {
+        markSynced("Saved on this device — connect the project folder for " + PROJECT_STATE + " + " + PROJECT_PICTURES + "/", "warn");
+      }
+      lastJson = JSON.stringify(payload);
+      render();
+    }catch(e){
+      syncStatus = "err";
+      syncMessage = e.message || "Save failed";
+      render();
+    }
+  };
+  if(immediate) await run();
+  else saveTimer = setTimeout(run, 200);
+}
+
+function exportJson(){
+  const blob = new Blob([JSON.stringify(stripDisplay(state), null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "state.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast("Downloaded " + PROJECT_STATE + " — keep it in the project folder");
+}
+
+function importJsonFile(file){
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try{
+      const next = normalizeState(JSON.parse(reader.result));
+      state = await hydrateImages(next);
+      const t = todayKey();
+      checked = (state.logs[t] && state.logs[t].done) || {};
+      await persist(true);
+      showToast(dirHandle ? "Imported into project " + PROJECT_STATE : "Imported onto this device");
+    }catch(e){
+      showToast(e.message || "Invalid JSON");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function supportsOpenFilePicker(){
+  return typeof window.showOpenFilePicker === "function";
+}
+
+async function ensureFolderForUpload(){
+  if(dirHandle && picturesHandle) return true;
+  if(!supportsFolder()) return false;
+  const ok = window.confirm(
+    "Photos must be saved in the project pictures/ folder.\n\n" +
+    "Connect the project folder (the one with " + PROJECT_HTML + ", " + PROJECT_STATE + ", and " + PROJECT_PICTURES + "/) now?"
+  );
+  if(!ok) return false;
+  await connectFolder();
+  return !!(dirHandle && picturesHandle);
+}
+
+async function pickImageFromDeviceFolder(){
+  // Chrome/Edge: real file picker with access to Pictures/Downloads/any folder
+  if(supportsOpenFilePicker()){
+    const [handle] = await window.showOpenFilePicker({
+      multiple: false,
+      excludeAcceptAllOption: false,
+      startIn: "pictures",
+      types: [{
+        description: "Images",
+        accept: {
+          "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".heic", ".bmp"],
+        },
+      }],
+    });
+    return handle.getFile();
+  }
+  return null; // caller falls back to <input type="file">
+}
+
+async function pickImageFromSharedPictures(){
+  if(!picturesHandle) throw new Error("Connect a folder first");
+  if(supportsOpenFilePicker()){
+    // Prefer opening inside the connected pictures directory when the browser allows it
+    try{
+      const [handle] = await window.showOpenFilePicker({
+        multiple: false,
+        startIn: picturesHandle,
+        types: [{
+          description: "Images",
+          accept: { "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".heic", ".bmp"] },
+        }],
+      });
+      return handle.getFile();
+    }catch(e){
+      if(e && e.name === "AbortError") throw e;
+      // fall through to listing picker below
+    }
+  }
+
+  const names = [];
+  for await (const [name, handle] of picturesHandle.entries()){
+    if(handle.kind === "file" && /\.(png|jpe?g|webp|gif|heic|bmp)$/i.test(name)) names.push(name);
+  }
+  if(!names.length) throw new Error("No images in pictures/ yet — choose one from a device folder");
+  const choice = window.prompt("Type a file name from pictures/:\n\n" + names.slice(0, 30).join("\n"));
+  if(!choice) throw new DOMException("Aborted", "AbortError");
+  const match = names.find(n => n.toLowerCase() === choice.trim().toLowerCase());
+  if(!match) throw new Error("File not found in pictures/");
+  const fileHandle = await picturesHandle.getFileHandle(match);
+  return fileHandle.getFile();
+}
+
+async function savePhotoFile(exercise, file){
+  if(!file || !String(file.type || "").startsWith("image/")){
+    // some mobile folders omit mime — still allow by extension
+    if(!/\.(png|jpe?g|webp|gif|heic|bmp)$/i.test(file && file.name || "")){
+      throw new Error("Please choose an image file from a folder");
+    }
+  }
+
+  const hasFolder = await ensureFolderForUpload();
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g,"") || "jpg";
+  const filename = `${slugify(exercise)}-${Date.now()}.${ext}`;
+
+  if(hasFolder && dirHandle && picturesHandle){
+    const oldRef = state.images[exercise];
+    const fileHandle = await picturesHandle.getFileHandle(filename, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(await file.arrayBuffer());
+    await writable.close();
+    const ref = `pictures/${filename}`;
+    if(oldRef && oldRef.startsWith("pictures/") && oldRef !== ref){
+      try{ await picturesHandle.removeEntry(oldRef.slice("pictures/".length)); }catch(_){}
+      if(objectUrls[oldRef]){ URL.revokeObjectURL(objectUrls[oldRef]); delete objectUrls[oldRef]; }
+    }
+    state.images = { ...state.images, [exercise]: ref };
+    state._displayImages = { ...(state._displayImages||{}), [exercise]: await resolveImageSrc(exercise, ref) };
+    await persist(true);
+    showToast("Photo saved to device folder: pictures/" + filename);
+    return;
+  }
+
+  // Fallback only when folder APIs are unavailable (e.g. many phones)
+  const dataUrl = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+  state.images = { ...state.images, [exercise]: dataUrl };
+  state._displayImages = { ...(state._displayImages||{}), [exercise]: dataUrl };
+  await persist(true);
+  showToast("Photo saved on this device (connect a folder to use pictures/)");
+}
+
+async function removePhoto(exercise){
+  const oldRef = state.images[exercise];
+  if(dirHandle && picturesHandle && oldRef && oldRef.startsWith("pictures/")){
+    try{ await picturesHandle.removeEntry(oldRef.slice("pictures/".length)); }catch(_){}
+    if(objectUrls[oldRef]){ URL.revokeObjectURL(objectUrls[oldRef]); delete objectUrls[oldRef]; }
+  }
+  const images = { ...state.images };
+  delete images[exercise];
+  state.images = images;
+  if(state._displayImages) delete state._displayImages[exercise];
+  await persist(true);
+}
+
+async function pollFolder(force=false){
+  if(!dirHandle) return;
+  if(!force && (document.hidden || imageModalFor || window.__showWalkModal || window.__showBwModal)) return;
+  try{
+    const remote = await loadStateFromFolder();
+    const remoteJson = JSON.stringify(remote);
+    if(remoteJson !== lastJson){
+      state = await hydrateImages(remote);
+      lastJson = remoteJson;
+      saveLocal(remote);
+      const t = todayKey();
+      checked = (state.logs[t] && state.logs[t].done) || {};
+      markSynced("Live update from project " + PROJECT_STATE);
+      render();
+      if(force) showToast("Pulled latest from project folder");
+    } else {
+      markSynced("Watching project folder (" + PROJECT_STATE + " + " + PROJECT_PICTURES + "/)");
+      if(force){
+        showToast("Already up to date");
+        render();
+      }
+    }
+  }catch(e){
+    syncStatus = "err";
+    syncMessage = e.message || "Could not read project folder";
+    render();
+  }
 }
 
 // ---------- App state ----------
@@ -193,17 +917,48 @@ let checked = {};
 let expandedDay = null;
 let expandedExercise = null;
 let imageModalFor = null;
+let syncStatus = "warn";
+let syncMessage = "Loading…";
+let toastMsg = null;
+let toastTimer = null;
+let saveTimer = null;
+let lastJson = "";
+let lastSyncedAt = null;
 
 const app = document.getElementById("app");
 
-async function init(){
-  state = await loadState();
-  const t = todayKey();
-  checked = (state.logs[t] && state.logs[t].done) || {};
+function showToast(msg){
+  toastMsg = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ toastMsg=null; render(); }, 2400);
   render();
 }
 
-function persist(){ saveState(state); render(); }
+async function init(){
+  const reconnected = supportsFolder() ? await reconnectFolder() : false;
+  if(!reconnected){
+    const fromProject = await loadStateFromProjectFile();
+    if(fromProject && !isEmptyState(fromProject)){
+      state = await hydrateImages(fromProject);
+      lastJson = JSON.stringify(stripDisplay(state));
+      saveLocal(stripDisplay(state));
+      markSynced("Loaded project " + PROJECT_STATE + " — connect project folder to save changes back", "warn");
+    } else {
+      state = await hydrateImages(loadLocal());
+      lastJson = JSON.stringify(stripDisplay(state));
+      markSynced(
+        supportsFolder()
+          ? "On this device — connect the project folder to use " + PROJECT_STATE + " + " + PROJECT_PICTURES + "/"
+          : "On this device — Export/Import " + PROJECT_STATE + " (keep it in the project folder)",
+        "warn"
+      );
+    }
+  }
+  const t = todayKey();
+  checked = (state.logs[t] && state.logs[t].done) || {};
+  render();
+  setInterval(() => pollFolder(false), 3000);
+}
 
 function gaugeSvg(pct, label, sub){
   pct = Math.max(0, Math.min(100, pct));
@@ -239,7 +994,25 @@ function computeStreak(){
   return count;
 }
 
+function imgSrc(exName){
+  return (state._displayImages && state._displayImages[exName]) || (state.images && state.images[exName]) || "";
+}
+
+function photoBlock(exName){
+  const img = imgSrc(exName);
+  if(img){
+    return `
+      <img class="ex-image" src="${esc(img)}" alt="${esc(exName)}"/>
+      <div class="image-actions">
+        <button class="small-btn" style="border:1px solid var(--muted3);color:var(--muted2)" data-changeimg="${esc(exName)}">Change photo</button>
+        <button class="small-btn" style="border:1px solid var(--muted3);color:var(--rust)" data-removeimg="${esc(exName)}">Remove</button>
+      </div>`;
+  }
+  return `<button class="add-photo-btn" data-addimg="${esc(exName)}">Add photo</button>`;
+}
+
 function render(){
+  if(!state) return;
   const dcode = dayCode();
   const program = PROGRAM[dcode];
   const tkey = todayKey();
@@ -279,7 +1052,39 @@ function render(){
         <div class="title">REBUILD PROTOCOL</div>
       </div>
       <div class="streak-badge">
-        🔥<span class="mono" style="font-size:14px;font-weight:600">${streak}</span>
+        <span aria-hidden="true">*</span><span class="mono" style="font-size:14px;font-weight:600">${streak}</span>
+      </div>
+    </div>
+    <div class="sync-bar">
+      <div class="mode-row">
+        <button class="mode-pill ${dirHandle?'':'active'}" data-mode="device" ${dirHandle?'':'disabled'}>
+          <strong>On this device</strong>
+          Browser only (backup)
+        </button>
+        <button class="mode-pill ${dirHandle?'active':''}" data-mode="project" ${supportsFolder()?'':'disabled'} title="${supportsFolder()?'':'Use Chrome/Edge to connect the project folder'}">
+          <strong>Project folder</strong>
+          ${supportsFolder()
+            ? (dirHandle ? ("Live: " + PROJECT_STATE + " + " + PROJECT_PICTURES + "/") : ("Tap — select folder with " + PROJECT_HTML))
+            : ("Export/Import " + PROJECT_STATE + " in the project folder")}
+        </button>
+      </div>
+      <div class="sync-row">
+        <div style="display:flex;gap:8px;min-width:0">
+          <span class="sync-dot ${esc(syncStatus)}"></span>
+          <div class="sync-meta">
+            <div>${esc(syncMessage)}</div>
+            <div class="mono" style="color:var(--muted3);margin-top:2px">${esc(syncedLabel())}</div>
+          </div>
+        </div>
+      </div>
+      <div class="sync-actions">
+        <button class="share-btn" data-opendropbox="1">Open Dropbox</button>
+        ${dirHandle ? `<button class="share-btn" data-refresh="1">Refresh now</button>
+        <button class="share-btn ghost" data-disconnect="1">Use device only</button>` : ""}
+        <button class="share-btn ghost" data-export="1">Export JSON</button>
+        <button class="share-btn ghost" data-import="1">Import JSON</button>
+        <button class="share-btn ghost" data-importdropbox="1">Import from Dropbox</button>
+        <input id="importJsonInput" type="file" accept="application/json,.json" style="display:none"/>
       </div>
     </div>
   </div>
@@ -309,15 +1114,19 @@ function render(){
       program.exercises.forEach((ex, idx) => {
         const isDone = !!checked[idx];
         const guide = FORM_GUIDE[ex.name];
+        const visual = exerciseVisual(ex.name);
         const exKey = `today-${idx}`;
         const isOpen = expandedExercise === exKey;
-        const img = state.images && state.images[ex.name];
         html += `
         <div class="exercise-card ${isDone?'done':''}">
           <div class="exercise-row">
             <button class="ex-main" data-toggle="${idx}">
-              <div class="ex-name" style="${isDone?'color:var(--olive)':''}">${esc(ex.name)}</div>
-              <div class="ex-meta">${ex.sets} × ${ex.reps}${ex.note?` · ${esc(ex.note)}`:""}</div>
+              ${exerciseIconSvg(ex.name, "ex-icon")}
+              <div class="ex-text">
+                <div class="ex-name" style="${isDone?'color:var(--olive)':''}">${esc(ex.name)}</div>
+                <div class="ex-cue">${esc(visual.cue)}</div>
+                <div class="ex-meta">${ex.sets} × ${ex.reps}${ex.note?` · ${esc(ex.note)}`:""}</div>
+              </div>
             </button>
             <div class="ex-actions">
               ${guide ? `<button class="form-btn" data-formtoggle="${exKey}">${isOpen?"Hide":"Form"}</button>` : ""}
@@ -326,13 +1135,7 @@ function render(){
           </div>
           ${isOpen && guide ? `
           <div class="ex-detail">
-            ${img ? `
-              <img class="ex-image" src="${esc(img)}" alt="${esc(ex.name)}"/>
-              <div class="image-actions">
-                <button class="small-btn" style="border:1px solid var(--muted3);color:var(--muted2)" data-changeimg="${esc(ex.name)}">Change photo</button>
-                <button class="small-btn" style="border:1px solid var(--muted3);color:var(--rust)" data-removeimg="${esc(ex.name)}">Remove</button>
-              </div>` : `
-              <button class="add-photo-btn" data-addimg="${esc(ex.name)}">📷 Add photo</button>`}
+            ${photoBlock(ex.name)}
             <span class="stencil detail-label" style="color:var(--olive)">How to</span>
             <ol class="detail-list">
               ${guide.steps.map((s,si)=>`<li><span class="num">${si+1}.</span><span>${esc(s)}</span></li>`).join("")}
@@ -348,8 +1151,8 @@ function render(){
 
     html += `
     <div class="action-row">
-      <button class="ghost-btn ghost-olive" data-open="walk">🥾 <span class="stencil" style="font-size:11px">Log Walk</span></button>
-      <button class="ghost-btn ghost-rust" data-open="bw">+ <span class="stencil" style="font-size:11px">Body Weight</span></button>
+      <button class="ghost-btn ghost-olive" data-open="walk"><span class="stencil" style="font-size:11px">Log Walk</span></button>
+      <button class="ghost-btn ghost-rust" data-open="bw"><span class="stencil" style="font-size:11px">Body Weight</span></button>
     </div>`;
   }
 
@@ -380,12 +1183,18 @@ function render(){
             prog.exercises.map((ex,i)=>{
               const exKey = `${dc}-${i}`;
               const guide = FORM_GUIDE[ex.name];
+              const visual = exerciseVisual(ex.name);
               const exOpen = expandedExercise === exKey;
-              const img = state.images && state.images[ex.name];
               return `
               <div class="week-ex-row">
                 <button class="week-ex-top" ${guide?`data-formtoggle="${exKey}"`:""}>
-                  <span class="week-ex-name">${esc(ex.name)}</span>
+                  <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+                    ${exerciseIconSvg(ex.name, "week-ex-icon")}
+                    <span class="week-ex-label">
+                      <span class="week-ex-name">${esc(ex.name)}</span>
+                      <span class="week-ex-cue">${esc(visual.cue)}</span>
+                    </span>
+                  </div>
                   <div style="display:flex;align-items:center;gap:8px">
                     <span class="mono" style="font-size:11px;color:var(--muted)">${ex.sets} × ${ex.reps}</span>
                     ${guide?`<span class="chevron ${exOpen?'open':''}" style="font-size:11px">›</span>`:""}
@@ -393,13 +1202,7 @@ function render(){
                 </button>
                 ${exOpen && guide ? `
                 <div style="padding-bottom:10px">
-                  ${img ? `
-                    <img class="ex-image" style="margin-top:8px" src="${esc(img)}" alt="${esc(ex.name)}"/>
-                    <div class="image-actions">
-                      <button class="small-btn" style="border:1px solid var(--muted3);color:var(--muted2)" data-changeimg="${esc(ex.name)}">Change photo</button>
-                      <button class="small-btn" style="border:1px solid var(--muted3);color:var(--rust)" data-removeimg="${esc(ex.name)}">Remove</button>
-                    </div>` : `
-                    <button class="add-photo-btn" data-addimg="${esc(ex.name)}">📷 Add photo</button>`}
+                  <div style="margin-top:8px">${photoBlock(ex.name)}</div>
                   <span class="stencil detail-label" style="color:var(--olive);margin-top:10px">How to</span>
                   <ol class="detail-list">
                     ${guide.steps.map((s,si)=>`<li><span class="num">${si+1}.</span><span>${esc(s)}</span></li>`).join("")}
@@ -419,10 +1222,10 @@ function render(){
   if(tab === "progress"){
     html += `
     <div class="stats-grid">
-      <div class="stat-card">🪖<div class="stat-val">${Object.keys(state.logs).length}</div><span class="stencil stat-label">Total Sessions</span></div>
-      <div class="stat-card">🔥<div class="stat-val">${streak}</div><span class="stencil stat-label">Day Streak</span></div>
-      <div class="stat-card">🥾<div class="stat-val">${weekDistance.toFixed(1)}</div><span class="stencil stat-label">km Walked (7d)</span></div>
-      <div class="stat-card">📈<div class="stat-val">${walksThisWeek.length}</div><span class="stencil stat-label">Walks (7d)</span></div>
+      <div class="stat-card"><div class="stat-val">${Object.keys(state.logs).length}</div><span class="stencil stat-label">Total Sessions</span></div>
+      <div class="stat-card"><div class="stat-val">${streak}</div><span class="stencil stat-label">Day Streak</span></div>
+      <div class="stat-card"><div class="stat-val">${weekDistance.toFixed(1)}</div><span class="stencil stat-label">km Walked (7d)</span></div>
+      <div class="stat-card"><div class="stat-val">${walksThisWeek.length}</div><span class="stencil stat-label">Walks (7d)</span></div>
     </div>
     <div class="stencil" style="font-size:11px;color:var(--muted);margin-bottom:8px">Body Weight Trend (kg)</div>`;
 
@@ -445,12 +1248,27 @@ function render(){
     }
 
     html += `
-    <button class="ghost-btn ghost-olive" style="width:100%;margin-top:24px" data-open="bw">+ <span class="stencil" style="font-size:11px">Log Body Weight</span></button>`;
+    <div class="info-box">
+      <div class="stencil" style="font-size:11px;color:var(--olive);margin-bottom:8px">Project folder + Dropbox on devices</div>
+      <p>JSON and pictures stay inside this project:</p>
+      <p class="mono" style="color:var(--muted2)">field-training-tracker.html<br>state.json<br>pictures/</p>
+      <p>1. Put this whole project folder inside Dropbox on your PC.</p>
+      <p>2. Tap <strong>Open Dropbox</strong> on any phone/PC — opens the Dropbox app or website.</p>
+      <p>3. On Chrome/Edge tap <strong>Project folder</strong>, then in the picker open <strong>Dropbox → this project</strong>.</p>
+      <p>4. On phones: <strong>Import from Dropbox</strong> (Files → Locations → Dropbox), or use Dropbox Chooser below.</p>
+      <button class="share-btn" style="margin-top:4px" data-opendropbox="1">Open Dropbox</button>
+    </div>
+    <div class="info-box">
+      <div class="stencil" style="font-size:11px;color:var(--olive);margin-bottom:8px">Dropbox Chooser (optional)</div>
+      <p>To open Dropbox’s own picker inside this app, paste a free Dropbox App key (Dropbox Developer Console → App Console → create app → App key).</p>
+      <input class="modal-input" id="dropboxKeyInput" type="text" placeholder="Dropbox App key" value="${esc(getDropboxAppKey())}"/>
+      <button class="modal-save" data-savedropboxkey="1">SAVE APP KEY</button>
+    </div>
+    <button class="ghost-btn ghost-olive" style="width:100%;margin-top:16px" data-open="bw"><span class="stencil" style="font-size:11px">Log Body Weight</span></button>`;
   }
 
   html += `</div>`;
 
-  // Modals
   if(imageModalFor){
     html += `
     <div class="modal-overlay" data-overlay="image">
@@ -459,9 +1277,20 @@ function render(){
           <span class="stencil" style="font-size:13px;color:var(--olive)">Add Photo — ${esc(imageModalFor)}</span>
           <button class="modal-x" data-close="image">✕</button>
         </div>
-        <p class="modal-hint">Search for "${esc(imageModalFor.toLowerCase())} form" in Google Images, open the photo, copy its image address, and paste the link below.</p>
-        <input class="modal-input" id="imgUrlInput" type="url" placeholder="Paste image URL" value="${esc(state.images && state.images[imageModalFor] || "")}"/>
-        <button class="modal-save" data-saveimg="1">SAVE</button>
+        <p class="modal-hint">Open Dropbox on this device, or pick an image from Files → Dropbox / Photos. The file is copied into project <span class="mono">pictures/</span> next to <span class="mono">state.json</span>.</p>
+        <p class="upload-path">${dirHandle
+          ? `Saving into project → <span class="mono">pictures/</span>`
+          : `Connect the project folder (inside Dropbox) first so uploads go into <span class="mono">pictures/</span>.`}</p>
+        <button class="file-btn" data-opendropbox="1">Open Dropbox</button>
+        <button class="file-btn" data-pickdropbox="1">Choose from Dropbox</button>
+        <button class="file-btn secondary" data-pickfolder="1">Choose from device folder</button>
+        ${dirHandle ? `<button class="file-btn secondary" data-pickshared="1">Choose from project pictures/</button>` : `<button class="file-btn secondary" data-connectupload="1">Connect project folder</button>`}
+        <button class="file-btn secondary" data-pickcamera="1">Take photo with camera</button>
+        <input id="imgFileInput" type="file" accept="image/*" style="display:none"/>
+        <input id="imgCameraInput" type="file" accept="image/*" capture="environment" style="display:none"/>
+        <div class="or-line">or paste image URL</div>
+        <input class="modal-input" id="imgUrlInput" type="url" placeholder="https://…" value=""/>
+        <button class="modal-save" data-saveimg="1">SAVE URL</button>
       </div>
     </div>`;
   }
@@ -486,6 +1315,8 @@ function render(){
       </div>
     </div>`;
   }
+
+  if(toastMsg) html += `<div class="toast">${esc(toastMsg)}</div>`;
 
   app.innerHTML = html;
   wireEvents();
@@ -529,31 +1360,180 @@ function wireEvents(){
   app.querySelectorAll("[data-overlay]").forEach(el=>{
     el.addEventListener("click", (e) => { if(e.target === el) el.querySelector("[data-close]").click(); });
   });
-  app.querySelectorAll("[data-addimg]").forEach(el=>{
-    el.onclick = () => { imageModalFor = el.dataset.addimg; render(); };
-  });
-  app.querySelectorAll("[data-changeimg]").forEach(el=>{
-    el.onclick = () => { imageModalFor = el.dataset.changeimg; render(); };
+  app.querySelectorAll("[data-addimg],[data-changeimg]").forEach(el=>{
+    el.onclick = () => { imageModalFor = el.dataset.addimg || el.dataset.changeimg; render(); };
   });
   app.querySelectorAll("[data-removeimg]").forEach(el=>{
-    el.onclick = () => {
-      const name = el.dataset.removeimg;
-      const images = { ...(state.images||{}) };
-      delete images[name];
-      state.images = images;
-      persist();
-    };
+    el.onclick = () => removePhoto(el.dataset.removeimg);
   });
+
+  const projectModeBtn = app.querySelector('[data-mode="project"]');
+  if(projectModeBtn && !dirHandle && supportsFolder()){
+    projectModeBtn.onclick = async () => {
+      try{ await connectFolder(); }
+      catch(e){ if(e && e.name !== "AbortError") showToast(e.message || "Could not connect project folder"); }
+    };
+  }
+  const deviceModeBtn = app.querySelector('[data-mode="device"]');
+  if(deviceModeBtn && dirHandle){
+    deviceModeBtn.onclick = () => disconnectFolder();
+  }
+  const refreshBtn = app.querySelector("[data-refresh]");
+  if(refreshBtn) refreshBtn.onclick = () => pollFolder(true);
+  const disconnectBtn = app.querySelector("[data-disconnect]");
+  if(disconnectBtn) disconnectBtn.onclick = () => disconnectFolder();
+
+  app.querySelectorAll("[data-opendropbox]").forEach(el=>{
+    el.onclick = () => openDropbox();
+  });
+
+  const exportBtn = app.querySelector("[data-export]");
+  if(exportBtn) exportBtn.onclick = () => exportJson();
+
+  const importBtn = app.querySelector("[data-import]");
+  const importInput = document.getElementById("importJsonInput");
+  if(importBtn && importInput){
+    importBtn.onclick = () => importInput.click();
+    importInput.onchange = () => {
+      const file = importInput.files && importInput.files[0];
+      if(file) importJsonFile(file);
+      importInput.value = "";
+    };
+  }
+
+  const importDropboxBtn = app.querySelector("[data-importdropbox]");
+  if(importDropboxBtn && importInput){
+    importDropboxBtn.onclick = async () => {
+      try{
+        if(getDropboxAppKey()){
+          await importJsonFromDropboxChooser();
+          return;
+        }
+        await openDropboxThenPick(
+          importInput,
+          "Then choose state.json — on phones use Browse / Locations → Dropbox"
+        );
+      }catch(e){
+        if(e && e.name === "AbortError") return;
+        // Fallback to system picker that can open Dropbox
+        await openDropboxThenPick(importInput, e.message || "Pick state.json from Dropbox");
+      }
+    };
+  }
+
+  const saveDropboxKeyBtn = app.querySelector("[data-savedropboxkey]");
+  if(saveDropboxKeyBtn){
+    saveDropboxKeyBtn.onclick = () => {
+      const input = document.getElementById("dropboxKeyInput");
+      setDropboxAppKey(input ? input.value : "");
+      showToast(getDropboxAppKey() ? "Dropbox App key saved on this device" : "Dropbox App key cleared");
+    };
+  }
+
+  async function handlePickedPhoto(file){
+    if(!file || !imageModalFor) return;
+    try{
+      await savePhotoFile(imageModalFor, file);
+      imageModalFor = null;
+      render();
+    }catch(e){
+      if(e && e.name === "AbortError") return;
+      showToast(e.message || "Upload failed");
+    }
+  }
+
+  const fileInput = document.getElementById("imgFileInput");
+  const cameraInput = document.getElementById("imgCameraInput");
+  if(fileInput){
+    fileInput.onchange = () => {
+      const file = fileInput.files && fileInput.files[0];
+      fileInput.value = "";
+      handlePickedPhoto(file);
+    };
+  }
+  if(cameraInput){
+    cameraInput.onchange = () => {
+      const file = cameraInput.files && cameraInput.files[0];
+      cameraInput.value = "";
+      handlePickedPhoto(file);
+    };
+  }
+
+  const pickDropboxBtn = app.querySelector("[data-pickdropbox]");
+  if(pickDropboxBtn){
+    pickDropboxBtn.onclick = async () => {
+      try{
+        if(getDropboxAppKey()){
+          const file = await pickImageFromDropboxChooser();
+          return handlePickedPhoto(file);
+        }
+        await openDropboxThenPick(
+          fileInput,
+          "Then pick a photo — Browse / Locations → Dropbox"
+        );
+      }catch(e){
+        if(e && e.name === "AbortError") return;
+        await openDropboxThenPick(fileInput, e.message || "Pick a photo from Dropbox");
+      }
+    };
+  }
+
+  const pickFolderBtn = app.querySelector("[data-pickfolder]");
+  if(pickFolderBtn){
+    pickFolderBtn.onclick = async () => {
+      try{
+        const file = await pickImageFromDeviceFolder();
+        if(file) return handlePickedPhoto(file);
+        if(fileInput) fileInput.click(); // mobile / Safari: opens gallery, Files, Dropbox
+      }catch(e){
+        if(e && e.name === "AbortError") return;
+        if(fileInput) fileInput.click();
+      }
+    };
+  }
+
+  const pickSharedBtn = app.querySelector("[data-pickshared]");
+  if(pickSharedBtn){
+    pickSharedBtn.onclick = async () => {
+      try{
+        const file = await pickImageFromSharedPictures();
+        await handlePickedPhoto(file);
+      }catch(e){
+        if(e && e.name === "AbortError") return;
+        showToast(e.message || "Could not open pictures/");
+      }
+    };
+  }
+
+  const connectUploadBtn = app.querySelector("[data-connectupload]");
+  if(connectUploadBtn){
+    connectUploadBtn.onclick = async () => {
+      try{
+        await connectFolder();
+        showToast("Folder connected — choose a photo from a device folder");
+      }catch(e){
+        if(e && e.name !== "AbortError") showToast(e.message || "Could not connect folder");
+      }
+    };
+  }
+
+  const pickCameraBtn = app.querySelector("[data-pickcamera]");
+  if(pickCameraBtn && cameraInput){
+    pickCameraBtn.onclick = () => cameraInput.click();
+  }
+
   const saveImgBtn = app.querySelector("[data-saveimg]");
-  if(saveImgBtn) saveImgBtn.onclick = () => {
+  if(saveImgBtn) saveImgBtn.onclick = async () => {
     const val = document.getElementById("imgUrlInput").value.trim();
     if(!val) return;
     state.images = { ...(state.images||{}), [imageModalFor]: val };
+    state._displayImages = { ...(state._displayImages||{}), [imageModalFor]: val };
     imageModalFor = null;
-    persist();
+    await persist(true);
   };
+
   const saveWalkBtn = app.querySelector("[data-savewalk]");
-  if(saveWalkBtn) saveWalkBtn.onclick = () => {
+  if(saveWalkBtn) saveWalkBtn.onclick = async () => {
     const km = parseFloat(document.getElementById("walkDistInput").value);
     const mins = parseFloat(document.getElementById("walkMinsInput").value);
     if(!km || km<=0) return;
@@ -561,10 +1541,11 @@ function wireEvents(){
     const entry = { date: tkey, km, mins: mins || null };
     state.walks = [...(state.walks||[]).filter(w=>w.date!==tkey), entry].sort((a,b)=>a.date.localeCompare(b.date));
     window.__showWalkModal = false;
-    persist();
+    await persist(true);
   };
+
   const saveBwBtn = app.querySelector("[data-savebw]");
-  if(saveBwBtn) saveBwBtn.onclick = () => {
+  if(saveBwBtn) saveBwBtn.onclick = async () => {
     const kg = parseFloat(document.getElementById("bwInput").value);
     if(!kg || kg<=0) return;
     const tkey = todayKey();
@@ -572,9 +1553,11 @@ function wireEvents(){
     state.bodyweight = [...state.bodyweight.filter(b=>b.date!==tkey), entry].sort((a,b)=>a.date.localeCompare(b.date));
     if(state.startWeight == null) state.startWeight = kg;
     window.__showBwModal = false;
-    persist();
+    await persist(true);
   };
 }
+
+document.addEventListener("visibilitychange", () => { if(!document.hidden) pollFolder(); });
 
 init();
 </script>
