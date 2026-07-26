@@ -34,6 +34,15 @@ Most phone browsers cannot attach a live folder. Use:
 2. Save/share `state.json` through the Dropbox app
 3. **Import JSON** on the other device
 
+## Photo uploads (device folder access)
+
+- **Choose from device folder** — opens Photos/Downloads/Dropbox/any folder on the device
+- **Connect device/Dropbox folder** — required for saving into a real `pictures/` directory
+- **Choose from pictures/** — reuse an image already in the shared folder
+- **Take photo** — optional camera capture
+
+Uploaded images are copied into `pictures/` inside the connected folder so every device sees them.
+
 ## Features
 
 - Daily program (Push / Pull / Legs / Ruck / Full body / Recovery)

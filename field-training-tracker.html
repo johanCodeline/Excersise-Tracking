@@ -103,8 +103,11 @@
   .modal-input{width:100%; padding:10px 12px; margin-bottom:12px; background:var(--bg); border:1px solid var(--muted3); color:var(--text); outline:none; font-family:'IBM Plex Mono',monospace; font-size:13px;}
   .modal-save{width:100%; padding:10px; background:var(--olive); color:var(--bg); border:none; font-family:'Oswald',sans-serif; letter-spacing:.08em; font-size:13px;}
   .modal-hint{font-size:11px; color:var(--muted); margin:-6px 0 12px; line-height:1.5;}
-  .file-btn{width:100%; padding:12px; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:8px; background:none; border:1px dashed var(--olive); color:var(--olive); font-size:12px;}
-  .or-line{text-align:center; font-size:10px; color:var(--muted3); margin:0 0 12px; letter-spacing:.08em; text-transform:uppercase;}
+  .file-btn{width:100%; padding:12px; margin-bottom:8px; display:flex; align-items:center; justify-content:center; gap:8px; background:none; border:1px dashed var(--olive); color:var(--olive); font-size:12px;}
+  .file-btn.secondary{border-color:var(--muted3); color:var(--muted2);}
+  .or-line{text-align:center; font-size:10px; color:var(--muted3); margin:10px 0 12px; letter-spacing:.08em; text-transform:uppercase;}
+  .upload-path{font-size:11px; color:var(--muted2); margin:0 0 12px; line-height:1.45; word-break:break-all;}
+  .upload-path .mono{color:var(--olive);}
   .ex-image{width:100%; max-height:160px; object-fit:contain; background:var(--bg); border:1px solid var(--border); display:block;}
   .image-actions{display:flex; gap:8px; margin-top:6px;}
   .small-btn{font-size:11px; padding:5px 8px; background:none; display:flex; align-items:center; gap:4px;}
@@ -480,29 +483,104 @@ function importJsonFile(file){
   reader.readAsText(file);
 }
 
+function supportsOpenFilePicker(){
+  return typeof window.showOpenFilePicker === "function";
+}
+
+async function ensureFolderForUpload(){
+  if(dirHandle && picturesHandle) return true;
+  if(!supportsFolder()) return false;
+  const ok = window.confirm(
+    "Photos need a folder on this device (or Dropbox).\n\nConnect a folder now so uploads save into pictures/ ?"
+  );
+  if(!ok) return false;
+  await connectFolder();
+  return !!(dirHandle && picturesHandle);
+}
+
+async function pickImageFromDeviceFolder(){
+  // Chrome/Edge: real file picker with access to Pictures/Downloads/any folder
+  if(supportsOpenFilePicker()){
+    const [handle] = await window.showOpenFilePicker({
+      multiple: false,
+      excludeAcceptAllOption: false,
+      startIn: "pictures",
+      types: [{
+        description: "Images",
+        accept: {
+          "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".heic", ".bmp"],
+        },
+      }],
+    });
+    return handle.getFile();
+  }
+  return null; // caller falls back to <input type="file">
+}
+
+async function pickImageFromSharedPictures(){
+  if(!picturesHandle) throw new Error("Connect a folder first");
+  if(supportsOpenFilePicker()){
+    // Prefer opening inside the connected pictures directory when the browser allows it
+    try{
+      const [handle] = await window.showOpenFilePicker({
+        multiple: false,
+        startIn: picturesHandle,
+        types: [{
+          description: "Images",
+          accept: { "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".heic", ".bmp"] },
+        }],
+      });
+      return handle.getFile();
+    }catch(e){
+      if(e && e.name === "AbortError") throw e;
+      // fall through to listing picker below
+    }
+  }
+
+  const names = [];
+  for await (const [name, handle] of picturesHandle.entries()){
+    if(handle.kind === "file" && /\.(png|jpe?g|webp|gif|heic|bmp)$/i.test(name)) names.push(name);
+  }
+  if(!names.length) throw new Error("No images in pictures/ yet — choose one from a device folder");
+  const choice = window.prompt("Type a file name from pictures/:\n\n" + names.slice(0, 30).join("\n"));
+  if(!choice) throw new DOMException("Aborted", "AbortError");
+  const match = names.find(n => n.toLowerCase() === choice.trim().toLowerCase());
+  if(!match) throw new Error("File not found in pictures/");
+  const fileHandle = await picturesHandle.getFileHandle(match);
+  return fileHandle.getFile();
+}
+
 async function savePhotoFile(exercise, file){
+  if(!file || !String(file.type || "").startsWith("image/")){
+    // some mobile folders omit mime — still allow by extension
+    if(!/\.(png|jpe?g|webp|gif|heic|bmp)$/i.test(file && file.name || "")){
+      throw new Error("Please choose an image file from a folder");
+    }
+  }
+
+  const hasFolder = await ensureFolderForUpload();
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g,"") || "jpg";
   const filename = `${slugify(exercise)}-${Date.now()}.${ext}`;
 
-  if(dirHandle && picturesHandle){
+  if(hasFolder && dirHandle && picturesHandle){
     const oldRef = state.images[exercise];
     const fileHandle = await picturesHandle.getFileHandle(filename, { create: true });
     const writable = await fileHandle.createWritable();
-    await writable.write(file);
+    await writable.write(await file.arrayBuffer());
     await writable.close();
     const ref = `pictures/${filename}`;
-    if(oldRef && oldRef.startsWith("pictures/")){
+    if(oldRef && oldRef.startsWith("pictures/") && oldRef !== ref){
       try{ await picturesHandle.removeEntry(oldRef.slice("pictures/".length)); }catch(_){}
       if(objectUrls[oldRef]){ URL.revokeObjectURL(objectUrls[oldRef]); delete objectUrls[oldRef]; }
     }
     state.images = { ...state.images, [exercise]: ref };
     state._displayImages = { ...(state._displayImages||{}), [exercise]: await resolveImageSrc(exercise, ref) };
     await persist(true);
-    showToast("Photo saved in pictures/");
+    showToast("Photo saved to device folder: pictures/" + filename);
     return;
   }
 
-  // Fallback: store as data URL inside JSON (works everywhere, larger file)
+  // Fallback only when folder APIs are unavailable (e.g. many phones)
   const dataUrl = await new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result);
@@ -512,7 +590,7 @@ async function savePhotoFile(exercise, file){
   state.images = { ...state.images, [exercise]: dataUrl };
   state._displayImages = { ...(state._displayImages||{}), [exercise]: dataUrl };
   await persist(true);
-  showToast("Photo saved in JSON (connect a folder for pictures/)");
+  showToast("Photo saved on this device (connect a folder to use pictures/)");
 }
 
 async function removePhoto(exercise){
@@ -891,9 +969,15 @@ function render(){
           <span class="stencil" style="font-size:13px;color:var(--olive)">Add Photo — ${esc(imageModalFor)}</span>
           <button class="modal-x" data-close="image">✕</button>
         </div>
-        <p class="modal-hint">${dirHandle ? "Upload saves into the shared pictures/ folder." : "Upload stores the photo in your saved JSON (or connect a folder for a pictures/ directory)."}</p>
-        <button class="file-btn" data-pickfile="1">Choose / take photo</button>
-        <input id="imgFileInput" type="file" accept="image/*" capture="environment" style="display:none"/>
+        <p class="modal-hint">Upload can open folders on this device (Photos, Downloads, Dropbox, etc.). Files are copied into the shared <span class="mono">pictures/</span> folder when connected.</p>
+        <p class="upload-path">${dirHandle
+          ? `Saving into connected folder → <span class="mono">pictures/</span>`
+          : `No folder connected yet — you will be asked to pick a device/Dropbox folder so uploads have folder access.`}</p>
+        <button class="file-btn" data-pickfolder="1">Choose from device folder</button>
+        ${dirHandle ? `<button class="file-btn secondary" data-pickshared="1">Choose from pictures/ folder</button>` : `<button class="file-btn secondary" data-connectupload="1">Connect device/Dropbox folder</button>`}
+        <button class="file-btn secondary" data-pickcamera="1">Take photo with camera</button>
+        <input id="imgFileInput" type="file" accept="image/*" style="display:none"/>
+        <input id="imgCameraInput" type="file" accept="image/*" capture="environment" style="display:none"/>
         <div class="or-line">or paste image URL</div>
         <input class="modal-input" id="imgUrlInput" type="url" placeholder="https://…" value=""/>
         <button class="modal-save" data-saveimg="1">SAVE URL</button>
@@ -1003,21 +1087,79 @@ function wireEvents(){
     };
   }
 
-  const pickBtn = app.querySelector("[data-pickfile]");
+  async function handlePickedPhoto(file){
+    if(!file || !imageModalFor) return;
+    try{
+      await savePhotoFile(imageModalFor, file);
+      imageModalFor = null;
+      render();
+    }catch(e){
+      if(e && e.name === "AbortError") return;
+      showToast(e.message || "Upload failed");
+    }
+  }
+
   const fileInput = document.getElementById("imgFileInput");
-  if(pickBtn && fileInput){
-    pickBtn.onclick = () => fileInput.click();
-    fileInput.onchange = async () => {
+  const cameraInput = document.getElementById("imgCameraInput");
+  if(fileInput){
+    fileInput.onchange = () => {
       const file = fileInput.files && fileInput.files[0];
-      if(!file || !imageModalFor) return;
+      fileInput.value = "";
+      handlePickedPhoto(file);
+    };
+  }
+  if(cameraInput){
+    cameraInput.onchange = () => {
+      const file = cameraInput.files && cameraInput.files[0];
+      cameraInput.value = "";
+      handlePickedPhoto(file);
+    };
+  }
+
+  const pickFolderBtn = app.querySelector("[data-pickfolder]");
+  if(pickFolderBtn){
+    pickFolderBtn.onclick = async () => {
       try{
-        await savePhotoFile(imageModalFor, file);
-        imageModalFor = null;
-        render();
+        const file = await pickImageFromDeviceFolder();
+        if(file) return handlePickedPhoto(file);
+        if(fileInput) fileInput.click(); // mobile / Safari: opens gallery & device folders
       }catch(e){
-        showToast(e.message || "Upload failed");
+        if(e && e.name === "AbortError") return;
+        if(fileInput) fileInput.click();
       }
     };
+  }
+
+  const pickSharedBtn = app.querySelector("[data-pickshared]");
+  if(pickSharedBtn){
+    pickSharedBtn.onclick = async () => {
+      try{
+        const file = await pickImageFromSharedPictures();
+        await handlePickedPhoto(file);
+      }catch(e){
+        if(e && e.name === "AbortError") return;
+        showToast(e.message || "Could not open pictures/");
+      }
+    };
+  }
+
+  const connectUploadBtn = app.querySelector("[data-connectupload]");
+  if(connectUploadBtn){
+    connectUploadBtn.onclick = async () => {
+      try{
+        await connectFolder();
+        imageModalFor = imageModalFor; // keep modal open after reconnect render
+        render();
+        showToast("Folder connected — choose a photo from a device folder");
+      }catch(e){
+        if(e && e.name !== "AbortError") showToast(e.message || "Could not connect folder");
+      }
+    };
+  }
+
+  const pickCameraBtn = app.querySelector("[data-pickcamera]");
+  if(pickCameraBtn && cameraInput){
+    pickCameraBtn.onclick = () => cameraInput.click();
   }
 
   const saveImgBtn = app.querySelector("[data-saveimg]");
