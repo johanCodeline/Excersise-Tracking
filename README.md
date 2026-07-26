@@ -6,8 +6,6 @@ Open `field-training-tracker.html` in a browser.
 
 ## Project folder layout
 
-JSON and pictures live **in this project folder**:
-
 ```text
 Excersise-Tracking/
   field-training-tracker.html   ← the app
@@ -16,27 +14,27 @@ Excersise-Tracking/
   README.md
 ```
 
-## Connect the project folder (recommended)
+Keep this whole project inside **Dropbox** so every device sees the same `state.json` and `pictures/`.
 
-1. Open `field-training-tracker.html` in **Chrome or Edge**
-2. Tap **Project folder**
-3. Select **this project folder** (the one that already contains the HTML file)
-4. The app reads/writes:
-   - `state.json` in the project root
-   - photos into `pictures/`
+## Open Dropbox on devices
 
-Put the whole project in Dropbox/Google Drive if you want those same files to sync live across devices.
+In the app header (and Progress tab):
 
-## On this device only
+- **Open Dropbox** — opens the Dropbox app or website on phone/PC
+- **Import from Dropbox** — pick `state.json` from Dropbox (Files → Locations → Dropbox, or Dropbox Chooser)
+- **Choose from Dropbox** (photo modal) — pick an image from Dropbox; it is copied into project `pictures/`
 
-If the project folder is not connected, data stays in the browser. Use **Export JSON** / **Import JSON** and keep `state.json` inside the project folder.
+### Optional Dropbox Chooser
 
-## Photo uploads
+Under **Progress**, paste a free Dropbox App key (Dropbox Developer Console → create app → App key). Then Import / Choose from Dropbox opens Dropbox’s own picker inside the browser.
 
-- **Choose from device folder** — pick from Photos/Downloads/etc.
-- File is **copied into project `pictures/`**
-- **Choose from project pictures/** — reuse an existing project image
-- **Take photo** — camera option
+## Connect the project folder (desktop)
+
+1. Put this project inside your Dropbox folder
+2. Open the HTML in Chrome/Edge
+3. Tap **Project folder**
+4. In the picker open **Dropbox → this project**
+5. Saves go to `state.json` + `pictures/` in that same project folder
 
 ## Features
 

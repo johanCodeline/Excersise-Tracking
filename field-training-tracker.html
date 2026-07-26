@@ -196,12 +196,126 @@ const FORM_GUIDE = {
 };
 
 const STORAGE_KEY = "field-tracker-state";
+const DROPBOX_KEY_STORAGE = "rebuild-dropbox-app-key";
 const DB_NAME = "rebuild-protocol";
 const DB_STORE = "handles";
 const PROJECT_HTML = "field-training-tracker.html";
 const PROJECT_STATE = "state.json";
 const PROJECT_PICTURES = "pictures";
+const DROPBOX_WEB = "https://www.dropbox.com/home";
 const EMPTY_STATE = { logs:{}, bodyweight:[], startWeight:null, walks:[], images:{} };
+
+function isAndroid(){ return /Android/i.test(navigator.userAgent); }
+function isAppleMobile(){ return /iPhone|iPad|iPod/i.test(navigator.userAgent); }
+function isMobileDevice(){ return isAndroid() || isAppleMobile() || /Mobile/i.test(navigator.userAgent); }
+
+function getDropboxAppKey(){
+  try{ return (localStorage.getItem(DROPBOX_KEY_STORAGE) || "").trim(); }
+  catch{ return ""; }
+}
+function setDropboxAppKey(key){
+  const val = String(key || "").trim();
+  if(val) localStorage.setItem(DROPBOX_KEY_STORAGE, val);
+  else localStorage.removeItem(DROPBOX_KEY_STORAGE);
+}
+
+function openDropbox(pathHint){
+  // Opens Dropbox app when installed, otherwise Dropbox on the web — works on phone & PC
+  const web = pathHint && /^https?:\/\//i.test(pathHint) ? pathHint : DROPBOX_WEB;
+  showToast("Opening Dropbox on this device…");
+
+  if(isAndroid()){
+    const intent =
+      "intent://home/#Intent;scheme=https;package=com.dropbox.android;S.browser_fallback_url=" +
+      encodeURIComponent(web) + ";end";
+    window.location.href = intent;
+    setTimeout(() => { try{ window.open(web, "_blank", "noopener"); }catch(_){ } }, 900);
+    return;
+  }
+
+  if(isAppleMobile()){
+    // https://www.dropbox.com often hands off to the Dropbox app when installed
+    const appLink = document.createElement("a");
+    appLink.href = "dbapi-2://1/home";
+    appLink.style.display = "none";
+    document.body.appendChild(appLink);
+    try{ appLink.click(); }catch(_){}
+    setTimeout(() => {
+      window.location.href = web;
+      try{ appLink.remove(); }catch(_){}
+    }, 400);
+    return;
+  }
+
+  window.open(web, "_blank", "noopener");
+}
+
+function loadDropboxChooser(){
+  return new Promise((resolve, reject) => {
+    if(window.Dropbox && typeof window.Dropbox.choose === "function"){
+      resolve();
+      return;
+    }
+    const key = getDropboxAppKey();
+    if(!key){
+      reject(new Error("Add your Dropbox App key under Progress to open Dropbox Chooser"));
+      return;
+    }
+    const old = document.getElementById("dropboxjs");
+    if(old) old.remove();
+    const s = document.createElement("script");
+    s.src = "https://www.dropbox.com/static/api/2/dropins.js";
+    s.id = "dropboxjs";
+    s.setAttribute("data-app-key", key);
+    s.onload = () => {
+      if(window.Dropbox && typeof window.Dropbox.choose === "function") resolve();
+      else reject(new Error("Dropbox failed to load"));
+    };
+    s.onerror = () => reject(new Error("Could not load Dropbox on this device"));
+    document.head.appendChild(s);
+  });
+}
+
+function chooseFromDropbox(opts){
+  return loadDropboxChooser().then(() => new Promise((resolve, reject) => {
+    window.Dropbox.choose({
+      linkType: "direct",
+      multiselect: false,
+      folderselect: false,
+      success: (files) => resolve(files || []),
+      cancel: () => reject(new DOMException("Aborted", "AbortError")),
+      ...opts,
+    });
+  }));
+}
+
+async function importJsonFromDropboxChooser(){
+  const files = await chooseFromDropbox({ extensions: [".json"] });
+  if(!files.length) throw new Error("No file selected in Dropbox");
+  const res = await fetch(files[0].link);
+  if(!res.ok) throw new Error("Could not download from Dropbox");
+  const text = await res.text();
+  const blob = new Blob([text], { type: "application/json" });
+  importJsonFile(new File([blob], files[0].name || PROJECT_STATE, { type: "application/json" }));
+}
+
+async function pickImageFromDropboxChooser(){
+  const files = await chooseFromDropbox({
+    extensions: [".png", ".jpg", ".jpeg", ".webp", ".gif", ".heic", ".bmp"],
+  });
+  if(!files.length) throw new Error("No image selected in Dropbox");
+  const res = await fetch(files[0].link);
+  if(!res.ok) throw new Error("Could not download image from Dropbox");
+  const blob = await res.blob();
+  const name = files[0].name || "dropbox-photo.jpg";
+  return new File([blob], name, { type: blob.type || "image/jpeg" });
+}
+
+async function openDropboxThenPick(inputEl, tip){
+  openDropbox();
+  showToast(tip || "In the file picker: Browse / Locations → Dropbox");
+  setTimeout(() => { if(inputEl) inputEl.click(); }, isMobileDevice() ? 700 : 300);
+}
 
 function todayKey(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function dayCode(){ return DAY_KEYS[new Date().getDay()]; }
@@ -419,6 +533,7 @@ async function applyLoadedState(next, message){
 }
 
 async function connectFolder(){
+  showToast("In the picker open Dropbox (or This PC → Dropbox) → your project folder");
   const handle = await window.showDirectoryPicker({
     mode: "readwrite",
     id: "rebuild-project-folder",
@@ -429,10 +544,11 @@ async function connectFolder(){
   // Require the project folder itself (HTML + state.json + pictures/)
   if(!(await folderHasProjectHtml())){
     const useAnyway = window.confirm(
-      "Select the PROJECT folder — the one that already contains:\n\n" +
+      "Select the PROJECT folder inside Dropbox — the one that already contains:\n\n" +
       "  • " + PROJECT_HTML + "\n" +
       "  • " + PROJECT_STATE + "\n" +
       "  • " + PROJECT_PICTURES + "/\n\n" +
+      "Tip: In the folder window, open Dropbox first, then pick this project.\n\n" +
       "This folder does not contain " + PROJECT_HTML + ".\nUse it anyway and create state.json + pictures/ here?"
     );
     if(!useAnyway){
@@ -865,10 +981,12 @@ function render(){
         </div>
       </div>
       <div class="sync-actions">
+        <button class="share-btn" data-opendropbox="1">Open Dropbox</button>
         ${dirHandle ? `<button class="share-btn" data-refresh="1">Refresh now</button>
         <button class="share-btn ghost" data-disconnect="1">Use device only</button>` : ""}
         <button class="share-btn ghost" data-export="1">Export JSON</button>
         <button class="share-btn ghost" data-import="1">Import JSON</button>
+        <button class="share-btn ghost" data-importdropbox="1">Import from Dropbox</button>
         <input id="importJsonInput" type="file" accept="application/json,.json" style="display:none"/>
       </div>
     </div>
@@ -1022,12 +1140,20 @@ function render(){
 
     html += `
     <div class="info-box">
-      <div class="stencil" style="font-size:11px;color:var(--olive);margin-bottom:8px">Project folder layout</div>
+      <div class="stencil" style="font-size:11px;color:var(--olive);margin-bottom:8px">Project folder + Dropbox on devices</div>
       <p>JSON and pictures stay inside this project:</p>
       <p class="mono" style="color:var(--muted2)">field-training-tracker.html<br>state.json<br>pictures/</p>
-      <p>On Chrome/Edge tap <strong>Project folder</strong> and select <em>this</em> project folder (the one that already contains the HTML). Saves go to <span class="mono">state.json</span> and <span class="mono">pictures/</span> here.</p>
-      <p>Put the whole project in Dropbox/Drive to sync those same files live across devices.</p>
-      <p>On phones: Export/Import <span class="mono">state.json</span> — keep the file in the project folder.</p>
+      <p>1. Put this whole project folder inside Dropbox on your PC.</p>
+      <p>2. Tap <strong>Open Dropbox</strong> on any phone/PC — opens the Dropbox app or website.</p>
+      <p>3. On Chrome/Edge tap <strong>Project folder</strong>, then in the picker open <strong>Dropbox → this project</strong>.</p>
+      <p>4. On phones: <strong>Import from Dropbox</strong> (Files → Locations → Dropbox), or use Dropbox Chooser below.</p>
+      <button class="share-btn" style="margin-top:4px" data-opendropbox="1">Open Dropbox</button>
+    </div>
+    <div class="info-box">
+      <div class="stencil" style="font-size:11px;color:var(--olive);margin-bottom:8px">Dropbox Chooser (optional)</div>
+      <p>To open Dropbox’s own picker inside this app, paste a free Dropbox App key (Dropbox Developer Console → App Console → create app → App key).</p>
+      <input class="modal-input" id="dropboxKeyInput" type="text" placeholder="Dropbox App key" value="${esc(getDropboxAppKey())}"/>
+      <button class="modal-save" data-savedropboxkey="1">SAVE APP KEY</button>
     </div>
     <button class="ghost-btn ghost-olive" style="width:100%;margin-top:16px" data-open="bw"><span class="stencil" style="font-size:11px">Log Body Weight</span></button>`;
   }
@@ -1042,11 +1168,13 @@ function render(){
           <span class="stencil" style="font-size:13px;color:var(--olive)">Add Photo — ${esc(imageModalFor)}</span>
           <button class="modal-x" data-close="image">✕</button>
         </div>
-        <p class="modal-hint">Pick an image from any folder on this device. It is copied into the project <span class="mono">pictures/</span> folder (same place as <span class="mono">state.json</span>).</p>
+        <p class="modal-hint">Open Dropbox on this device, or pick an image from Files → Dropbox / Photos. The file is copied into project <span class="mono">pictures/</span> next to <span class="mono">state.json</span>.</p>
         <p class="upload-path">${dirHandle
           ? `Saving into project → <span class="mono">pictures/</span>`
-          : `Connect the project folder first so uploads go into this project's <span class="mono">pictures/</span>.`}</p>
-        <button class="file-btn" data-pickfolder="1">Choose from device folder</button>
+          : `Connect the project folder (inside Dropbox) first so uploads go into <span class="mono">pictures/</span>.`}</p>
+        <button class="file-btn" data-opendropbox="1">Open Dropbox</button>
+        <button class="file-btn" data-pickdropbox="1">Choose from Dropbox</button>
+        <button class="file-btn secondary" data-pickfolder="1">Choose from device folder</button>
         ${dirHandle ? `<button class="file-btn secondary" data-pickshared="1">Choose from project pictures/</button>` : `<button class="file-btn secondary" data-connectupload="1">Connect project folder</button>`}
         <button class="file-btn secondary" data-pickcamera="1">Take photo with camera</button>
         <input id="imgFileInput" type="file" accept="image/*" style="display:none"/>
@@ -1146,6 +1274,10 @@ function wireEvents(){
   const disconnectBtn = app.querySelector("[data-disconnect]");
   if(disconnectBtn) disconnectBtn.onclick = () => disconnectFolder();
 
+  app.querySelectorAll("[data-opendropbox]").forEach(el=>{
+    el.onclick = () => openDropbox();
+  });
+
   const exportBtn = app.querySelector("[data-export]");
   if(exportBtn) exportBtn.onclick = () => exportJson();
 
@@ -1157,6 +1289,35 @@ function wireEvents(){
       const file = importInput.files && importInput.files[0];
       if(file) importJsonFile(file);
       importInput.value = "";
+    };
+  }
+
+  const importDropboxBtn = app.querySelector("[data-importdropbox]");
+  if(importDropboxBtn && importInput){
+    importDropboxBtn.onclick = async () => {
+      try{
+        if(getDropboxAppKey()){
+          await importJsonFromDropboxChooser();
+          return;
+        }
+        await openDropboxThenPick(
+          importInput,
+          "Then choose state.json — on phones use Browse / Locations → Dropbox"
+        );
+      }catch(e){
+        if(e && e.name === "AbortError") return;
+        // Fallback to system picker that can open Dropbox
+        await openDropboxThenPick(importInput, e.message || "Pick state.json from Dropbox");
+      }
+    };
+  }
+
+  const saveDropboxKeyBtn = app.querySelector("[data-savedropboxkey]");
+  if(saveDropboxKeyBtn){
+    saveDropboxKeyBtn.onclick = () => {
+      const input = document.getElementById("dropboxKeyInput");
+      setDropboxAppKey(input ? input.value : "");
+      showToast(getDropboxAppKey() ? "Dropbox App key saved on this device" : "Dropbox App key cleared");
     };
   }
 
@@ -1189,13 +1350,32 @@ function wireEvents(){
     };
   }
 
+  const pickDropboxBtn = app.querySelector("[data-pickdropbox]");
+  if(pickDropboxBtn){
+    pickDropboxBtn.onclick = async () => {
+      try{
+        if(getDropboxAppKey()){
+          const file = await pickImageFromDropboxChooser();
+          return handlePickedPhoto(file);
+        }
+        await openDropboxThenPick(
+          fileInput,
+          "Then pick a photo — Browse / Locations → Dropbox"
+        );
+      }catch(e){
+        if(e && e.name === "AbortError") return;
+        await openDropboxThenPick(fileInput, e.message || "Pick a photo from Dropbox");
+      }
+    };
+  }
+
   const pickFolderBtn = app.querySelector("[data-pickfolder]");
   if(pickFolderBtn){
     pickFolderBtn.onclick = async () => {
       try{
         const file = await pickImageFromDeviceFolder();
         if(file) return handlePickedPhoto(file);
-        if(fileInput) fileInput.click(); // mobile / Safari: opens gallery & device folders
+        if(fileInput) fileInput.click(); // mobile / Safari: opens gallery, Files, Dropbox
       }catch(e){
         if(e && e.name === "AbortError") return;
         if(fileInput) fileInput.click();
