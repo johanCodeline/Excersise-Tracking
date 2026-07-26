@@ -1,76 +1,43 @@
-# Rebuild Protocol — Cross-device Field Training Log
+# Rebuild Protocol
 
-A workable workout tracker that stores everything in **JSON files** and **picture folders**, so phone, tablet, and PC can share the same data (Dropbox-style on your own machine/network).
+Pure **HTML + JavaScript** field training tracker. No server, no install.
 
-## What you get
+Open `field-training-tracker.html` in a browser.
+
+## Cross-device sharing (Dropbox-style)
+
+The app saves to **JSON** and a **pictures folder** so you can share across devices.
+
+### Best option (Chrome / Edge on desktop)
+
+1. Create a folder in Dropbox or Google Drive, e.g. `RebuildProtocol`
+2. Open the HTML file
+3. Click **Connect folder** and pick that folder
+4. The app writes:
+   - `state.json` — workouts, walks, body weight, photo references
+   - `pictures/` — uploaded exercise photos
+5. Dropbox/Drive syncs that folder to your other devices
+
+On another computer with Chrome/Edge, open the same HTML file and **Connect folder** to the synced folder.
+
+### Phone / Safari / other browsers
+
+Use **Export JSON** / **Import JSON**:
+
+1. Export `state.json` on one device
+2. Put it in Dropbox/Drive (or AirDrop it)
+3. Import it on the other device
+
+Photos can still be added; without a connected folder they are stored inside the JSON file.
+
+## Features
 
 - Daily program (Push / Pull / Legs / Ruck / Full body / Recovery)
 - Check off exercises, log walks, log body weight
 - Form tips + exercise photos
-- Shared persistence:
-  - `data/state.json` — workouts, walks, weight, image references
-  - `pictures/` — uploaded photos
+- Progress streak and body-weight trend
+- Local browser save when no folder is connected
 
-## Quick start
+## Files
 
-```bash
-npm install
-npm start
-```
-
-Then open one of the printed URLs, for example:
-
-- On this computer: `http://localhost:3847`
-- On your phone (same Wi‑Fi): `http://YOUR-LAN-IP:3847`
-
-Use **Copy link** in the app header to grab the shareable address.
-
-## How cross-device sharing works
-
-1. Keep `npm start` running on one always-on machine (laptop/PC/home server).
-2. Open the LAN URL on any other device on the same network.
-3. Changes write to `data/state.json`.
-4. Photos upload into `pictures/` and are served to every device.
-5. The app polls every few seconds so another device’s updates appear automatically.
-
-This is local Dropbox-style sharing: one host, many clients, no cloud account required.
-
-## Data layout
-
-```text
-data/
-  state.json          # live shared state
-  state.example.json  # starter shape
-pictures/             # uploaded exercise photos
-public/               # web app UI
-server.js             # Express API + static host
-```
-
-`state.json` shape:
-
-```json
-{
-  "logs": { "2026-07-26": { "done": { "0": true }, "dayName": "PUSH" } },
-  "bodyweight": [{ "date": "2026-07-26", "kg": 82.4 }],
-  "startWeight": 84.0,
-  "walks": [{ "date": "2026-07-26", "km": 3.2, "mins": 35 }],
-  "images": { "Push-ups": "/pictures/push-ups-….jpg" }
-}
-```
-
-## API
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/api/health` | Server status + LAN URLs |
-| GET | `/api/state` | Read shared JSON |
-| PUT | `/api/state` | Save shared JSON |
-| POST | `/api/pictures` | Upload photo (`multipart`: `exercise`, `photo`) |
-| DELETE | `/api/pictures` | Remove photo for an exercise |
-
-## Notes
-
-- Default port: `3847` (override with `PORT=3000 npm start`)
-- Uploads accept common image types up to 12 MB
-- Keep the host machine awake while you want live sync
-- For access away from home, put this behind a VPN or reverse proxy you control
+- `field-training-tracker.html` — the whole app
