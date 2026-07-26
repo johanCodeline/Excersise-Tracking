@@ -4,44 +4,39 @@ Pure **HTML + JavaScript** field training tracker. No server, no install.
 
 Open `field-training-tracker.html` in a browser.
 
-## Can JSON be saved on the device or Dropbox?
+## Project folder layout
 
-Yes — both.
+JSON and pictures live **in this project folder**:
 
-| Mode | Where JSON lives | Multi-device |
-|------|------------------|------------|
-| **On this device** | Browser storage on that phone/PC | No (one device) |
-| **Dropbox folder** | `state.json` + `pictures/` inside a Dropbox (or Drive) folder | Yes — live sync on desktops |
+```text
+Excersise-Tracking/
+  field-training-tracker.html   ← the app
+  state.json                    ← workouts, walks, weight, photo refs
+  pictures/                     ← uploaded exercise photos
+  README.md
+```
 
-When Dropbox folder mode is on, the app also keeps a backup copy on the device.
+## Connect the project folder (recommended)
 
-## Live multi-device (Dropbox)
+1. Open `field-training-tracker.html` in **Chrome or Edge**
+2. Tap **Project folder**
+3. Select **this project folder** (the one that already contains the HTML file)
+4. The app reads/writes:
+   - `state.json` in the project root
+   - photos into `pictures/`
 
-1. Install Dropbox and create a folder, e.g. `RebuildProtocol`
-2. Open this HTML in **Chrome or Edge**
-3. Tap **Dropbox folder** and choose that folder
-4. The app writes:
-   - `state.json` — workouts, walks, weight, photo links
-   - `pictures/` — exercise photos
-5. On another PC with the same Dropbox folder: open the HTML → connect that folder
-6. Changes sync through Dropbox; the app checks for updates every few seconds (**Refresh now** forces a pull)
+Put the whole project in Dropbox/Google Drive if you want those same files to sync live across devices.
 
-## Phones
+## On this device only
 
-Most phone browsers cannot attach a live folder. Use:
+If the project folder is not connected, data stays in the browser. Use **Export JSON** / **Import JSON** and keep `state.json` inside the project folder.
 
-1. **Export JSON** on one device
-2. Save/share `state.json` through the Dropbox app
-3. **Import JSON** on the other device
+## Photo uploads
 
-## Photo uploads (device folder access)
-
-- **Choose from device folder** — opens Photos/Downloads/Dropbox/any folder on the device
-- **Connect device/Dropbox folder** — required for saving into a real `pictures/` directory
-- **Choose from pictures/** — reuse an image already in the shared folder
-- **Take photo** — optional camera capture
-
-Uploaded images are copied into `pictures/` inside the connected folder so every device sees them.
+- **Choose from device folder** — pick from Photos/Downloads/etc.
+- File is **copied into project `pictures/`**
+- **Choose from project pictures/** — reuse an existing project image
+- **Take photo** — camera option
 
 ## Features
 

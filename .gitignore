@@ -2,5 +2,7 @@
 *.log
 node_modules/
 data/
-pictures/
-state.json
+
+# Keep project pictures/ folder; ignore uploaded image files
+pictures/*
+!pictures/.gitkeep

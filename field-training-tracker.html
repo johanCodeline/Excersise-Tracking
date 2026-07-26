@@ -198,6 +198,9 @@ const FORM_GUIDE = {
 const STORAGE_KEY = "field-tracker-state";
 const DB_NAME = "rebuild-protocol";
 const DB_STORE = "handles";
+const PROJECT_HTML = "field-training-tracker.html";
+const PROJECT_STATE = "state.json";
+const PROJECT_PICTURES = "pictures";
 const EMPTY_STATE = { logs:{}, bodyweight:[], startWeight:null, walks:[], images:{} };
 
 function todayKey(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
@@ -265,10 +268,33 @@ function revokeObjectUrls(){
   objectUrls = {};
 }
 
-async function ensurePicturesDir(){
+async function ensureProjectLayout(){
   if(!dirHandle) return null;
-  picturesHandle = await dirHandle.getDirectoryHandle("pictures", { create: true });
+  // Project folder layout:
+  //   field-training-tracker.html
+  //   state.json
+  //   pictures/
+  picturesHandle = await dirHandle.getDirectoryHandle(PROJECT_PICTURES, { create: true });
+  try{
+    await dirHandle.getFileHandle(PROJECT_STATE);
+  }catch{
+    await writeTextFile(dirHandle, PROJECT_STATE, JSON.stringify(EMPTY_STATE, null, 2));
+  }
   return picturesHandle;
+}
+
+async function ensurePicturesDir(){
+  return ensureProjectLayout();
+}
+
+async function folderHasProjectHtml(){
+  if(!dirHandle) return false;
+  try{
+    await dirHandle.getFileHandle(PROJECT_HTML);
+    return true;
+  }catch{
+    return false;
+  }
 }
 
 async function readTextFile(handle){
@@ -284,19 +310,32 @@ async function writeTextFile(parent, name, text){
 }
 
 async function loadStateFromFolder(){
+  await ensureProjectLayout();
   try{
-    const fileHandle = await dirHandle.getFileHandle("state.json");
+    const fileHandle = await dirHandle.getFileHandle(PROJECT_STATE);
     const text = await readTextFile(fileHandle);
     return normalizeState(JSON.parse(text));
   }catch{
     const fresh = { ...EMPTY_STATE };
-    await writeTextFile(dirHandle, "state.json", JSON.stringify(fresh, null, 2));
+    await writeTextFile(dirHandle, PROJECT_STATE, JSON.stringify(fresh, null, 2));
     return fresh;
   }
 }
 
 async function saveStateToFolder(next){
-  await writeTextFile(dirHandle, "state.json", JSON.stringify(next, null, 2));
+  await ensureProjectLayout();
+  await writeTextFile(dirHandle, PROJECT_STATE, JSON.stringify(next, null, 2));
+}
+
+async function loadStateFromProjectFile(){
+  // Works when the project is opened over http(s), or some local viewers
+  try{
+    const res = await fetch("./" + PROJECT_STATE, { cache: "no-store" });
+    if(!res.ok) return null;
+    return normalizeState(await res.json());
+  }catch{
+    return null;
+  }
 }
 
 async function resolveImageSrc(exName, ref){
@@ -357,7 +396,9 @@ function markSynced(msg, status="ok"){
 function syncedLabel(){
   if(!lastSyncedAt) return "";
   const t = lastSyncedAt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  return dirHandle ? `Live Dropbox/folder sync · last check ${t}` : `Saved on this device · ${t}`;
+  return dirHandle
+    ? `Project folder · ${PROJECT_STATE} + ${PROJECT_PICTURES}/ · last check ${t}`
+    : `Saved on this device · ${t}`;
 }
 
 async function verifyPermission(handle, mode="readwrite"){
@@ -378,24 +419,44 @@ async function applyLoadedState(next, message){
 }
 
 async function connectFolder(){
-  const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+  const handle = await window.showDirectoryPicker({
+    mode: "readwrite",
+    id: "rebuild-project-folder",
+  });
   if(!(await verifyPermission(handle))) throw new Error("Folder permission denied");
   dirHandle = handle;
-  await ensurePicturesDir();
+
+  // Require the project folder itself (HTML + state.json + pictures/)
+  if(!(await folderHasProjectHtml())){
+    const useAnyway = window.confirm(
+      "Select the PROJECT folder — the one that already contains:\n\n" +
+      "  • " + PROJECT_HTML + "\n" +
+      "  • " + PROJECT_STATE + "\n" +
+      "  • " + PROJECT_PICTURES + "/\n\n" +
+      "This folder does not contain " + PROJECT_HTML + ".\nUse it anyway and create state.json + pictures/ here?"
+    );
+    if(!useAnyway){
+      dirHandle = null;
+      picturesHandle = null;
+      throw new DOMException("Aborted", "AbortError");
+    }
+  }
+
+  await ensureProjectLayout();
   await idbSet("dir", handle);
 
   const folderState = await loadStateFromFolder();
   const localState = loadLocal();
   let next = folderState;
 
-  // First time in an empty Dropbox folder: seed it from this device
+  // Empty project state.json: seed from this device once
   if(isEmptyState(folderState) && !isEmptyState(localState)){
     next = localState;
     await saveStateToFolder(next);
   }
 
-  await applyLoadedState(next, "Live sync ON — JSON + pictures save into your Dropbox/shared folder");
-  showToast("Dropbox/shared folder connected");
+  await applyLoadedState(next, "Project folder connected — saving " + PROJECT_STATE + " + " + PROJECT_PICTURES + "/ here");
+  showToast("Using project folder for JSON + pictures");
 }
 
 async function reconnectFolder(){
@@ -404,9 +465,9 @@ async function reconnectFolder(){
     if(!saved) return false;
     if(!(await verifyPermission(saved))) return false;
     dirHandle = saved;
-    await ensurePicturesDir();
+    await ensureProjectLayout();
     const next = await loadStateFromFolder();
-    await applyLoadedState(next, "Live sync ON — reconnected to Dropbox/shared folder");
+    await applyLoadedState(next, "Reconnected to project folder (" + PROJECT_STATE + " + " + PROJECT_PICTURES + "/)");
     return true;
   }catch{
     return false;
@@ -418,7 +479,7 @@ async function disconnectFolder(){
   picturesHandle = null;
   revokeObjectUrls();
   await idbDel("dir");
-  await applyLoadedState(loadLocal(), "On this device only — enable Dropbox folder for live multi-device sync");
+  await applyLoadedState(loadLocal(), "On this device only — connect the project folder to use state.json + pictures/");
   showToast("Switched to this device only");
 }
 
@@ -440,9 +501,9 @@ async function persist(immediate){
       saveLocal(payload);
       if(dirHandle){
         await saveStateToFolder(payload);
-        markSynced("Saved to Dropbox/shared folder (state.json) + this device");
+        markSynced("Saved in project folder: " + PROJECT_STATE + " (+ device backup)");
       } else {
-        markSynced("Saved on this device — connect Dropbox folder for live multi-device", "warn");
+        markSynced("Saved on this device — connect the project folder for " + PROJECT_STATE + " + " + PROJECT_PICTURES + "/", "warn");
       }
       lastJson = JSON.stringify(payload);
       render();
@@ -463,7 +524,7 @@ function exportJson(){
   a.download = "state.json";
   a.click();
   URL.revokeObjectURL(a.href);
-  showToast("Downloaded state.json — save it in Dropbox to use on another device");
+  showToast("Downloaded " + PROJECT_STATE + " — keep it in the project folder");
 }
 
 function importJsonFile(file){
@@ -475,7 +536,7 @@ function importJsonFile(file){
       const t = todayKey();
       checked = (state.logs[t] && state.logs[t].done) || {};
       await persist(true);
-      showToast(dirHandle ? "Imported into live Dropbox folder" : "Imported onto this device");
+      showToast(dirHandle ? "Imported into project " + PROJECT_STATE : "Imported onto this device");
     }catch(e){
       showToast(e.message || "Invalid JSON");
     }
@@ -491,7 +552,8 @@ async function ensureFolderForUpload(){
   if(dirHandle && picturesHandle) return true;
   if(!supportsFolder()) return false;
   const ok = window.confirm(
-    "Photos need a folder on this device (or Dropbox).\n\nConnect a folder now so uploads save into pictures/ ?"
+    "Photos must be saved in the project pictures/ folder.\n\n" +
+    "Connect the project folder (the one with " + PROJECT_HTML + ", " + PROJECT_STATE + ", and " + PROJECT_PICTURES + "/) now?"
   );
   if(!ok) return false;
   await connectFolder();
@@ -618,11 +680,11 @@ async function pollFolder(force=false){
       saveLocal(remote);
       const t = todayKey();
       checked = (state.logs[t] && state.logs[t].done) || {};
-      markSynced("Live update from Dropbox/shared folder");
+      markSynced("Live update from project " + PROJECT_STATE);
       render();
-      if(force) showToast("Pulled latest from folder");
+      if(force) showToast("Pulled latest from project folder");
     } else {
-      markSynced("Live sync ON — watching Dropbox/shared folder");
+      markSynced("Watching project folder (" + PROJECT_STATE + " + " + PROJECT_PICTURES + "/)");
       if(force){
         showToast("Already up to date");
         render();
@@ -630,7 +692,7 @@ async function pollFolder(force=false){
     }
   }catch(e){
     syncStatus = "err";
-    syncMessage = e.message || "Could not read Dropbox/shared folder";
+    syncMessage = e.message || "Could not read project folder";
     render();
   }
 }
@@ -662,14 +724,22 @@ function showToast(msg){
 async function init(){
   const reconnected = supportsFolder() ? await reconnectFolder() : false;
   if(!reconnected){
-    state = await hydrateImages(loadLocal());
-    lastJson = JSON.stringify(stripDisplay(state));
-    markSynced(
-      supportsFolder()
-        ? "On this device — tap Dropbox folder below for live multi-device tracking"
-        : "On this device — Export/Import state.json through Dropbox on phones",
-      "warn"
-    );
+    const fromProject = await loadStateFromProjectFile();
+    if(fromProject && !isEmptyState(fromProject)){
+      state = await hydrateImages(fromProject);
+      lastJson = JSON.stringify(stripDisplay(state));
+      saveLocal(stripDisplay(state));
+      markSynced("Loaded project " + PROJECT_STATE + " — connect project folder to save changes back", "warn");
+    } else {
+      state = await hydrateImages(loadLocal());
+      lastJson = JSON.stringify(stripDisplay(state));
+      markSynced(
+        supportsFolder()
+          ? "On this device — connect the project folder to use " + PROJECT_STATE + " + " + PROJECT_PICTURES + "/"
+          : "On this device — Export/Import " + PROJECT_STATE + " (keep it in the project folder)",
+        "warn"
+      );
+    }
   }
   const t = todayKey();
   checked = (state.logs[t] && state.logs[t].done) || {};
@@ -776,11 +846,13 @@ function render(){
       <div class="mode-row">
         <button class="mode-pill ${dirHandle?'':'active'}" data-mode="device" ${dirHandle?'':'disabled'}>
           <strong>On this device</strong>
-          Saves in the browser on this phone/PC
+          Browser only (backup)
         </button>
-        <button class="mode-pill ${dirHandle?'active':''}" data-mode="dropbox" ${supportsFolder()?'':'disabled'} title="${supportsFolder()?'':'Use Chrome/Edge on desktop for live Dropbox folder sync'}">
-          <strong>Dropbox folder</strong>
-          ${supportsFolder() ? (dirHandle ? "Live multi-device via state.json" : "Tap to connect a Dropbox folder") : "Export/Import JSON via Dropbox on this browser"}
+        <button class="mode-pill ${dirHandle?'active':''}" data-mode="project" ${supportsFolder()?'':'disabled'} title="${supportsFolder()?'':'Use Chrome/Edge to connect the project folder'}">
+          <strong>Project folder</strong>
+          ${supportsFolder()
+            ? (dirHandle ? ("Live: " + PROJECT_STATE + " + " + PROJECT_PICTURES + "/") : ("Tap — select folder with " + PROJECT_HTML))
+            : ("Export/Import " + PROJECT_STATE + " in the project folder")}
         </button>
       </div>
       <div class="sync-row">
@@ -950,11 +1022,12 @@ function render(){
 
     html += `
     <div class="info-box">
-      <div class="stencil" style="font-size:11px;color:var(--olive);margin-bottom:8px">JSON on device or Dropbox</div>
-      <p><strong>On this device:</strong> always saves in the browser. Works offline on one phone/PC.</p>
-      <p><strong>Live multi-device:</strong> create a Dropbox folder (e.g. <span class="mono">RebuildProtocol</span>). On Chrome/Edge, tap <strong>Dropbox folder</strong> and pick it. The app writes <span class="mono">state.json</span> + <span class="mono">pictures/</span> there and checks for updates every few seconds.</p>
-      <p>On another PC with Dropbox installed, open this HTML and connect the same folder — workouts stay in sync.</p>
-      <p>On phones: use <strong>Export JSON</strong> / <strong>Import JSON</strong> with the Dropbox app (or AirDrop) when live folder connect is not available.</p>
+      <div class="stencil" style="font-size:11px;color:var(--olive);margin-bottom:8px">Project folder layout</div>
+      <p>JSON and pictures stay inside this project:</p>
+      <p class="mono" style="color:var(--muted2)">field-training-tracker.html<br>state.json<br>pictures/</p>
+      <p>On Chrome/Edge tap <strong>Project folder</strong> and select <em>this</em> project folder (the one that already contains the HTML). Saves go to <span class="mono">state.json</span> and <span class="mono">pictures/</span> here.</p>
+      <p>Put the whole project in Dropbox/Drive to sync those same files live across devices.</p>
+      <p>On phones: Export/Import <span class="mono">state.json</span> — keep the file in the project folder.</p>
     </div>
     <button class="ghost-btn ghost-olive" style="width:100%;margin-top:16px" data-open="bw"><span class="stencil" style="font-size:11px">Log Body Weight</span></button>`;
   }
@@ -969,12 +1042,12 @@ function render(){
           <span class="stencil" style="font-size:13px;color:var(--olive)">Add Photo — ${esc(imageModalFor)}</span>
           <button class="modal-x" data-close="image">✕</button>
         </div>
-        <p class="modal-hint">Upload can open folders on this device (Photos, Downloads, Dropbox, etc.). Files are copied into the shared <span class="mono">pictures/</span> folder when connected.</p>
+        <p class="modal-hint">Pick an image from any folder on this device. It is copied into the project <span class="mono">pictures/</span> folder (same place as <span class="mono">state.json</span>).</p>
         <p class="upload-path">${dirHandle
-          ? `Saving into connected folder → <span class="mono">pictures/</span>`
-          : `No folder connected yet — you will be asked to pick a device/Dropbox folder so uploads have folder access.`}</p>
+          ? `Saving into project → <span class="mono">pictures/</span>`
+          : `Connect the project folder first so uploads go into this project's <span class="mono">pictures/</span>.`}</p>
         <button class="file-btn" data-pickfolder="1">Choose from device folder</button>
-        ${dirHandle ? `<button class="file-btn secondary" data-pickshared="1">Choose from pictures/ folder</button>` : `<button class="file-btn secondary" data-connectupload="1">Connect device/Dropbox folder</button>`}
+        ${dirHandle ? `<button class="file-btn secondary" data-pickshared="1">Choose from project pictures/</button>` : `<button class="file-btn secondary" data-connectupload="1">Connect project folder</button>`}
         <button class="file-btn secondary" data-pickcamera="1">Take photo with camera</button>
         <input id="imgFileInput" type="file" accept="image/*" style="display:none"/>
         <input id="imgCameraInput" type="file" accept="image/*" capture="environment" style="display:none"/>
@@ -1057,11 +1130,11 @@ function wireEvents(){
     el.onclick = () => removePhoto(el.dataset.removeimg);
   });
 
-  const dropboxModeBtn = app.querySelector('[data-mode="dropbox"]');
-  if(dropboxModeBtn && !dirHandle && supportsFolder()){
-    dropboxModeBtn.onclick = async () => {
+  const projectModeBtn = app.querySelector('[data-mode="project"]');
+  if(projectModeBtn && !dirHandle && supportsFolder()){
+    projectModeBtn.onclick = async () => {
       try{ await connectFolder(); }
-      catch(e){ if(e && e.name !== "AbortError") showToast(e.message || "Could not connect Dropbox folder"); }
+      catch(e){ if(e && e.name !== "AbortError") showToast(e.message || "Could not connect project folder"); }
     };
   }
   const deviceModeBtn = app.querySelector('[data-mode="device"]');
@@ -1148,8 +1221,6 @@ function wireEvents(){
     connectUploadBtn.onclick = async () => {
       try{
         await connectFolder();
-        imageModalFor = imageModalFor; // keep modal open after reconnect render
-        render();
         showToast("Folder connected — choose a photo from a device folder");
       }catch(e){
         if(e && e.name !== "AbortError") showToast(e.message || "Could not connect folder");
